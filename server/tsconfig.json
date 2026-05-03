@@ -1,0 +1,30 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "lib": ["ES2023"],
+        "types": ["bun", "node"],
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "moduleDetection": "force",
+        "skipLibCheck": true,
+        "strict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+        "forceConsistentCasingInFileNames": true,
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["src/*"],
+            "@trio/shared": ["../shared/src/index.ts"],
+            "@trio/shared/*": ["../shared/src/*"]
+        },
+        "outDir": "dist",
+        "noEmit": true
+    },
+    "include": ["src/**/*", "prisma/**/*"],
+    "exclude": ["node_modules", "dist"]
+}

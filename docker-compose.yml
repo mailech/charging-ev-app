@@ -1,0 +1,99 @@
+services:
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+      target: dev
+    container_name: trio_client
+    working_dir: /app/client
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app/client
+      - ./shared:/app/shared
+      - client_node_modules:/app/client/node_modules
+    environment:
+      VITE_API_URL: http://localhost:8001
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: .
+      dockerfile: admin/Dockerfile
+      target: dev
+    container_name: trio_admin
+    working_dir: /app/admin
+    ports:
+      - "5174:5174"
+    volumes:
+      - ./admin:/app/admin
+      - ./shared:/app/shared
+      - admin_node_modules:/app/admin/node_modules
+    environment:
+      VITE_API_URL: http://localhost:8001
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+      target: dev
+    container_name: trio_server
+    working_dir: /app/server
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./server:/app/server
+      - ./shared:/app/shared
+      - server_node_modules:/app/server/node_modules
+    environment:
+      NODE_ENV: development
+      PORT: 8001
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/trio?schema=public
+      JWT_SECRET: dev_change_me_at_least_sixteen_chars
+      JWT_EXPIRES_IN: 7d
+      CORS_ORIGIN: http://localhost:5173,http://localhost:5174
+      LOG_LEVEL: debug
+      S3_REGION: ${S3_REGION:?S3_REGION is required}
+      S3_BUCKET: ${S3_BUCKET:?S3_BUCKET is required}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?S3_ACCESS_KEY_ID is required}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?S3_SECRET_ACCESS_KEY is required}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-false}
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    container_name: trio_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: trio
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d trio"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  client_node_modules:
+  admin_node_modules:
+  server_node_modules:

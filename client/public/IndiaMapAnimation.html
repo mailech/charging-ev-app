@@ -1,0 +1,1138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>India EV Loader</title>
+<style>
+  :root {
+    /* brand greens — same in both modes */
+    --ev: #00b86b;
+    --ev-soft: rgba(0,184,107,0.55);
+
+    /* ---- light theme (default) ---- */
+    --bg: #f4f1ec;
+    --ink: #141414;
+    --ink-soft: rgba(20,20,20,0.65);
+    --ink-muted: rgba(20,20,20,0.15);
+    --surface-glass: rgba(255,255,255,0.88);
+    --backdrop: rgba(244,241,236,0.32);
+    --shadow: rgba(0,0,0,0.22);
+    --label-halo: rgba(255,255,255,0.85);
+    --car-glass: rgba(20,20,20,0.55);
+    --country-grad-1: #fbf8f3;
+    --country-grad-2: #f4f1ec;
+    --country-grad-3: #ece8e0;
+    --shape-bg: rgba(20,20,20,0.02);
+    --bar-track: rgba(20,20,20,0.08);
+  }
+  [data-theme="dark"] {
+    /* warmer near-black instead of pure void — less abrupt edge contrast */
+    --bg: #1a1f29;
+    /* soft slate, not white. high contrast strains eyes; this still reads
+       cleanly while feeling calmer. */
+    --ink: #b9c2d0;
+    --ink-soft: rgba(185,194,208,0.62);
+    --ink-muted: rgba(185,194,208,0.16);
+    --surface-glass: rgba(38,44,55,0.86);
+    --backdrop: rgba(26,31,41,0.55);
+    --shadow: rgba(0,0,0,0.45);
+    --label-halo: rgba(26,31,41,0.92);
+    --car-glass: rgba(185,194,208,0.45);
+    /* country fill is *lifted* slightly from the bg so the landmass reads
+       as raised material rather than a hole punched through the page. */
+    --country-grad-1: #2a3140;
+    --country-grad-2: #232936;
+    --country-grad-3: #1d2330;
+    --shape-bg: rgba(185,194,208,0.04);
+    --bar-track: rgba(185,194,208,0.10);
+  }
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%; width: 100%;
+    background: transparent !important;
+    color: var(--ink);
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    -webkit-font-smoothing: antialiased;
+    transition: background 0.35s ease, color 0.35s ease;
+  }
+  /* feed the radial gradient stops from CSS so the country body re-tones
+     on theme switch (SVG <stop> fill is style-able). */
+  #countryGrad stop {
+    transition: stop-color 0.35s ease;
+  }
+  #countryGrad stop:nth-child(1) { stop-color: var(--country-grad-1); }
+  #countryGrad stop:nth-child(2) { stop-color: var(--country-grad-2); }
+  #countryGrad stop:nth-child(3) { stop-color: var(--country-grad-3); }
+  .stage {
+    width: 400px;
+    height: 400px;
+    position: relative;
+    display: grid;
+    place-items: center;
+  }
+  .stage svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  /* ---------- charging progress ring ---------- */
+  .ring-wrap { z-index: 1; pointer-events: none; }
+  .ring-track {
+    fill: none;
+    stroke: var(--ink);
+    stroke-opacity: 0.10;
+    stroke-width: 1.6;
+  }
+  .ring-fill {
+    fill: none;
+    stroke: var(--ev);
+    stroke-opacity: 0.55;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-dasharray: 4 6;
+    filter: drop-shadow(0 0 3px rgba(0,184,107,0.35));
+  }
+  @keyframes charge {
+    0%, 100% { stroke-dashoffset: 0; }
+  }
+  /* tick marks every 30deg around the ring */
+  .ring-ticks line {
+    stroke: var(--ink);
+    stroke-opacity: 0.35;
+    stroke-width: 0.8;
+    stroke-linecap: round;
+  }
+
+  /* car orbit – keep the car upright and pointing along its path of travel */
+  .car-orbit { /* rotated via SMIL animateTransform */ }
+  .car { /* static; positioning handled inline */ }
+  .car-body { fill: var(--ev); filter: drop-shadow(0 0 3px var(--ev-soft)); }
+  .car-glass { fill: var(--car-glass); }
+  .car-wheel { fill: var(--ink); }
+  .car-light { fill: #fff; filter: drop-shadow(0 0 2px var(--ev)); }
+
+  /* speed trail – the dashes RACE the car (same speed, same path, same rotation
+     animation) so they appear locked behind the car like an F1 slipstream. */
+  .car-trail {
+    fill: none;
+    stroke: url(#trailGrad);
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    /* visible arc length ≈ 70 of total ≈ 578 perimeter */
+    stroke-dasharray: 70 508;
+    /* start the visible segment so its END is at the top (where the car sits).
+       Top of circle is at path-length 0 when the path starts there; we offset
+       so the dash runs UP TO 0. */
+    stroke-dashoffset: 0;
+    filter: drop-shadow(0 0 4px var(--ev-soft));
+    opacity: 0.95;
+  }
+
+  /* ---------- map ---------- */
+  .map { z-index: 2; }
+  .map .country {
+    fill: url(#countryGrad);
+    stroke: var(--ink);
+    stroke-width: 0.7;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    pointer-events: none;
+    filter: url(#mapShadow);
+  }
+  .map .state {
+    fill: rgba(0,184,107,0.02);
+    stroke: var(--ink);
+    stroke-width: 0.3;
+    stroke-opacity: 0.45;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    cursor: pointer;
+    transition:
+      fill 0.22s ease,
+      fill-opacity 0.22s ease,
+      stroke-opacity 0.22s ease,
+      stroke-width 0.22s ease,
+      stroke 0.22s ease,
+      transform 0.32s cubic-bezier(.34,1.56,.64,1),
+      filter 0.22s ease;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .map .state:hover {
+    fill: var(--ev);
+    fill-opacity: 0.22;
+    stroke: var(--ev);
+    stroke-opacity: 1;
+    stroke-width: 0.75;
+    transform: scale(1.04);
+    filter: drop-shadow(0 0 5px rgba(0,184,107,0.6));
+  }
+  .map .state.selected {
+    fill: var(--ev);
+    fill-opacity: 0.32;
+    stroke: var(--ev);
+    stroke-opacity: 1;
+    stroke-width: 0.9;
+    filter: drop-shadow(0 0 6px rgba(0,184,107,0.7));
+  }
+
+  /* ---------- charging stations ---------- */
+  .stations { z-index: 3; pointer-events: none; }
+  .station-core {
+    fill: var(--ev);
+    filter: drop-shadow(0 0 3px var(--ev-soft));
+  }
+  .station-halo {
+    fill: var(--ev);
+    fill-opacity: 0.18;
+    filter: blur(0.6px);
+  }
+  .station-pulse {
+    fill: none;
+    stroke: var(--ev);
+    stroke-width: 1;
+    transform-origin: var(--cx) var(--cy);
+    animation: pulse 2.4s ease-out infinite;
+    animation-delay: var(--delay, 0s);
+  }
+  @keyframes pulse {
+    0%   { transform: scale(0.4); opacity: 0.9; }
+    80%  { transform: scale(2.6); opacity: 0;   }
+    100% { transform: scale(2.6); opacity: 0;   }
+  }
+  .station-core {
+    animation: blink 2.4s ease-in-out infinite;
+    animation-delay: var(--delay, 0s);
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 0.55; }
+    50%      { opacity: 1; }
+  }
+
+  /* central bolt sits behind the map */
+  .bolt {
+    z-index: 0;
+    pointer-events: none;    animation: boltPulse 2.4s ease-in-out infinite;
+    transform-origin: 50% 50%;
+  }
+  .bolt path {
+    fill: var(--ev);
+    fill-opacity: 0.10;
+    stroke: var(--ev);
+    stroke-opacity: 0.55;
+    stroke-width: 0.8;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+  @keyframes boltPulse {
+    0%, 100% { opacity: 0.45; transform: scale(1); }
+    50%      { opacity: 0.95; transform: scale(1.08); }
+  }
+
+  /* ---------- state pop-out card ---------- */
+  .state-popup {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+    /* always pe:none on the wrapper — only the card opts back in. That way
+       the cursor can sweep from state to state through the popup overlay
+       without the overlay trapping pointer events. */
+    pointer-events: none;
+    transition: opacity 0.28s ease;
+  }
+  .state-popup.show {
+    opacity: 1;
+  }
+  .state-popup-backdrop {
+    position: absolute;
+    inset: 0;
+    /* lighter & blurrier — the map underneath should still be readable so
+       the user can see which state they're switching to on hover. */
+    background: var(--backdrop);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    pointer-events: none;
+    transition: background 0.35s ease;
+  }
+  .state-popup-card {
+    position: relative;
+    width: min(360px, 90vw);
+    background: var(--surface-glass);
+    border-radius: 16px;
+    box-shadow:
+      0 24px 60px var(--shadow),
+      0 0 0 1px rgba(0,184,107,0.22),
+      0 0 40px rgba(0,184,107,0.08);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    padding: 16px 18px 18px;
+    transform: scale(0.9) translateY(8px);
+    transition: transform 0.32s cubic-bezier(.34,1.56,.64,1);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    color: var(--ink);
+    /* hidden state: card is invisible AND must not intercept cursor —
+       otherwise it blocks state hovers underneath since the popup wrapper
+       is fixed inset:0 and the card is centered exactly over the loader. */
+    pointer-events: none;
+  }
+  .state-popup.show .state-popup-card {
+    transform: scale(1) translateY(0);
+    /* visible state: card now captures the cursor so it stays open while
+       the user reads it. */
+    pointer-events: auto;
+  }
+  .state-popup-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .state-popup-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .state-popup-title .accent { color: var(--ev); }
+  .state-popup-close {
+    appearance: none;
+    background: transparent;
+    border: 1px solid var(--ink-muted);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1;
+    display: grid;
+    place-items: center;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.2s ease, color 0.15s ease;
+  }
+  .state-popup-close:hover {
+    background: var(--ev);
+    border-color: var(--ev);
+    color: #fff;
+    transform: rotate(90deg);
+  }
+  .state-popup-shape {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background:
+      radial-gradient(ellipse at 50% 45%, rgba(0,184,107,0.06), transparent 60%),
+      var(--shape-bg);
+    border-radius: 12px;
+    margin: 4px 0 12px;
+    overflow: hidden;
+    position: relative;
+    transition: background 0.35s ease;
+  }
+  .state-popup-shape svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .state-popup-shape .pop-state {
+    fill: url(#popStateGrad);
+    stroke: var(--ev);
+    stroke-width: 0.8;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 6px rgba(0,184,107,0.35));
+  }
+  .state-popup-shape .pop-station-halo {
+    fill: var(--ev);
+    fill-opacity: 0.18;
+  }
+  .state-popup-shape .pop-station-core {
+    fill: var(--ev);
+    filter: drop-shadow(0 0 3px var(--ev-soft));
+  }
+  .state-popup-shape .pop-station-pulse {
+    fill: none;
+    stroke: var(--ev);
+    stroke-width: 1.2;
+    transform-origin: var(--cx) var(--cy);
+    animation: pulse 2.4s ease-out infinite;
+    animation-delay: var(--delay, 0s);
+  }
+  .state-popup-shape .pop-label {
+    fill: var(--ink);
+    font: 600 6px ui-monospace, "SF Mono", Menlo, monospace;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    paint-order: stroke;
+    stroke: var(--label-halo);
+    stroke-width: 1.4;
+    stroke-linejoin: round;
+  }
+  .state-popup-stats {
+    display: flex;
+    gap: 14px;
+    align-items: baseline;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+  }
+  .state-popup-stats b {
+    color: var(--ink);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-right: 4px;
+  }
+  .state-popup-stats b.accent { color: var(--ev); }
+  .state-popup-bar {
+    height: 4px;
+    background: var(--bar-track);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .state-popup-bar-fill {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, rgba(0,184,107,0.7), var(--ev));
+    border-radius: 3px;
+    box-shadow: 0 0 8px rgba(0,184,107,0.5);
+    transition: width 0.6s cubic-bezier(.34,1.56,.64,1) 0.15s;
+  }
+  .state-popup-cities-label {
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    opacity: 0.8;
+    margin-bottom: 6px;
+  }
+  .state-popup-cities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .state-popup-city {
+    font-size: 10.5px;
+    background: rgba(0,184,107,0.1);
+    color: var(--ink);
+    padding: 4px 9px;
+    border-radius: 999px;
+    border: 1px solid rgba(0,184,107,0.25);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .state-popup-city::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--ev);
+    box-shadow: 0 0 4px var(--ev-soft);
+  }
+  .state-popup-empty {
+    font-size: 10px;
+    color: var(--ink-soft);
+    opacity: 0.8;
+    font-style: italic;
+  }
+
+  /* ---------- theme toggle (sun / moon) ---------- */
+  .theme-toggle {
+    display: none !important;
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--surface-glass);
+    border: 1px solid rgba(0,184,107,0.28);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    color: var(--ink);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow:
+      0 6px 20px var(--shadow),
+      0 0 0 0 rgba(0,184,107,0);
+    transition:
+      transform 0.35s cubic-bezier(.34,1.56,.64,1),
+      background 0.35s ease,
+      box-shadow 0.35s ease,
+      border-color 0.35s ease,
+      color 0.35s ease;
+    z-index: 100;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .theme-toggle:hover {
+    transform: scale(1.08) rotate(-12deg);
+    border-color: var(--ev);
+    box-shadow:
+      0 8px 24px var(--shadow),
+      0 0 0 4px rgba(0,184,107,0.12);
+  }
+  .theme-toggle:active { transform: scale(0.95); }
+  .theme-toggle:focus-visible {
+    outline: 2px solid var(--ev);
+    outline-offset: 3px;
+  }
+  .theme-toggle svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+    transition: transform 0.45s cubic-bezier(.34,1.56,.64,1), opacity 0.25s ease;
+  }
+  /* both icons share the same grid cell so they overlap; we crossfade
+     between them by toggling opacity + a small rotate/scale flourish. */
+  .theme-toggle .icon-sun,
+  .theme-toggle .icon-moon { grid-area: 1 / 1; }
+  .theme-toggle .icon-sun {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+  .theme-toggle .icon-moon {
+    opacity: 0;
+    transform: rotate(-60deg) scale(0.4);
+  }
+  [data-theme="dark"] .theme-toggle .icon-sun {
+    opacity: 0;
+    transform: rotate(60deg) scale(0.4);
+  }
+  [data-theme="dark"] .theme-toggle .icon-moon {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+</style>
+<script>
+  // Force dark theme for iframe
+  (function () {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  })();
+</script>
+</head>
+<body>
+
+<!-- day / night toggle. Initial theme set by an inline script before paint
+     so there's no flash of wrong theme on load. -->
+<button class="theme-toggle" id="themeToggle" aria-label="toggle day/night mode" title="Toggle theme">
+  <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+    <circle cx="12" cy="12" r="4"/>
+    <line x1="12" y1="2"  x2="12" y2="5"/>
+    <line x1="12" y1="19" x2="12" y2="22"/>
+    <line x1="2"  y1="12" x2="5"  y2="12"/>
+    <line x1="19" y1="12" x2="22" y2="12"/>
+    <line x1="4.5"  y1="4.5"  x2="6.6"  y2="6.6"/>
+    <line x1="17.4" y1="17.4" x2="19.5" y2="19.5"/>
+    <line x1="4.5"  y1="19.5" x2="6.6"  y2="17.4"/>
+    <line x1="17.4" y1="6.6"  x2="19.5" y2="4.5"/>
+  </svg>
+  <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M20 14.5 A 8 8 0 1 1 9.5 4 a 6.5 6.5 0 0 0 10.5 10.5 z"/>
+  </svg>
+</button>
+
+<div class="stage" aria-label="loading">
+
+  <!-- bolt behind map -->
+  <svg viewBox="0 0 200 200" class="bolt" aria-hidden="true">
+    <path d="M 108 70 L 86 104 L 100 104 L 92 132 L 116 96 L 102 96 Z"/>
+  </svg>
+
+  <!-- charging progress ring -->
+  <svg viewBox="0 0 200 200" class="ring-wrap" aria-hidden="true">
+    <defs>
+      <!-- trail fades from transparent to bright ev green so it looks like
+           a slipstream behind the car -->
+      <linearGradient id="trailGrad" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox">
+        <stop offset="0%"   stop-color="#00b86b" stop-opacity="0"/>
+        <stop offset="60%"  stop-color="#00b86b" stop-opacity="0.5"/>
+        <stop offset="100%" stop-color="#00b86b" stop-opacity="1"/>
+      </linearGradient>
+    </defs>
+
+    <!-- track -->
+    <circle class="ring-track" cx="100" cy="100" r="92"/>
+    <!-- tick marks -->
+    <g class="ring-ticks" id="ringTicks"></g>
+    <!-- dashed orbit (the road) -->
+    <circle class="ring-fill" cx="100" cy="100" r="92"/>
+
+    <!-- the car itself, riding the orbit. Car is drawn at origin (0,0) facing +X.
+         <animateMotion> translates it along a circle and rotates it tangent to the path,
+         so it looks like it's driving on the track. -->
+    <g class="car-orbit">
+      <!-- side-view car silhouette, ~18px long, centered at origin and facing +X -->
+      <!-- chassis -->
+      <rect class="car-body" x="-9" y="-2" width="18" height="4" rx="1.6"/>
+      <!-- cabin / roof -->
+      <path class="car-body" d="M -5 -2 L -3 -4.8 L 4 -4.8 L 6 -2 Z"/>
+      <!-- window -->
+      <path class="car-glass" d="M -3.8 -2.2 L -2.2 -4 L 3.2 -4 L 4.8 -2.2 Z"/>
+      <!-- wheels -->
+      <circle class="car-wheel" cx="-5.5" cy="2.2" r="1.5"/>
+      <circle class="car-wheel" cx="5.5"  cy="2.2" r="1.5"/>
+      <!-- headlight at front (+X side) -->
+      <rect class="car-light" x="8.4" y="-1.2" width="1.2" height="1.6" rx="0.3"/>
+
+      <animateMotion dur="6s" repeatCount="indefinite" rotate="auto">
+        <mpath href="#carPath"/>
+      </animateMotion>
+    </g>
+
+    <!-- invisible path used by animateMotion: a full circle of radius 92 around (100,100).
+         Two semicircles with OPPOSITE sweep flags so they trace top + bottom of the circle. -->
+    <path id="carPath"
+          d="M 8 100 A 92 92 0 0 1 192 100 A 92 92 0 0 1 8 100"
+          fill="none" stroke="none"/>
+  </svg>
+
+  <!-- the india map (drawn first by JS) -->
+  <svg viewBox="0 0 200 200" class="map" id="mapSvg" aria-hidden="true">
+    <defs>
+      <!-- subtle radial gradient for the country body (soft inner glow) -->
+      <radialGradient id="countryGrad" cx="50%" cy="48%" r="62%">
+        <stop offset="0%"  stop-color="#fbf8f3"/>
+        <stop offset="65%" stop-color="#f4f1ec"/>
+        <stop offset="100%" stop-color="#ece8e0"/>
+      </radialGradient>
+      <!-- soft drop shadow for the country shape -->
+      <filter id="mapShadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="0.9"/>
+        <feOffset dx="0" dy="0.6" result="off"/>
+        <feComponentTransfer><feFuncA type="linear" slope="0.32"/></feComponentTransfer>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- charging-station markers (added by JS) -->
+  <svg viewBox="0 0 200 200" class="stations" id="stationsSvg" aria-hidden="true"></svg>
+
+</div>
+
+<!-- state pop-out card (filled by JS, lives outside .stage so it can overlay the page) -->
+<div class="state-popup" id="statePopup" aria-hidden="true">
+  <div class="state-popup-backdrop" data-popup-close></div>
+  <div class="state-popup-card" role="dialog" aria-modal="true">
+    <div class="state-popup-head">
+      <div class="state-popup-title"><span class="accent">⚡</span><span id="popName">State</span></div>
+      <button class="state-popup-close" data-popup-close aria-label="close">×</button>
+    </div>
+    <div class="state-popup-shape">
+      <svg viewBox="0 0 200 200" id="popShapeSvg">
+        <defs>
+          <radialGradient id="popStateGrad" cx="50%" cy="48%" r="62%">
+            <stop offset="0%"  stop-color="rgba(0,184,107,0.28)"/>
+            <stop offset="70%" stop-color="rgba(0,184,107,0.10)"/>
+            <stop offset="100%" stop-color="rgba(0,184,107,0.04)"/>
+          </radialGradient>
+        </defs>
+      </svg>
+    </div>
+    <div class="state-popup-stats">
+      <span><b class="accent" id="popStations">0</b>stations</span>
+      <span><b id="popAdoption">0%</b>EV ready</span>
+    </div>
+    <div class="state-popup-bar"><div class="state-popup-bar-fill" id="popBarFill"></div></div>
+    <div class="state-popup-cities-label">Charging hubs</div>
+    <div class="state-popup-cities" id="popCities"></div>
+  </div>
+</div>
+
+<script>
+  // theme toggle: flip data-theme on <html>, persist in localStorage,
+  // and stop following the OS preference once the user has made a choice.
+  (function () {
+    const btn = document.getElementById('themeToggle');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      const root = document.documentElement;
+      const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('loader-theme', next); } catch (e) {}
+    });
+    // if the user hasn't explicitly chosen, keep tracking OS changes live
+    const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+    if (mq && mq.addEventListener) {
+      mq.addEventListener('change', (e) => {
+        try {
+          if (localStorage.getItem('loader-theme')) return;
+        } catch (err) {}
+        document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+      });
+    }
+  })();
+</script>
+
+<script>
+  // generate 12 ring tick marks (every 30°)
+  (function(){
+    const g = document.getElementById('ringTicks');
+    const NS = 'http://www.w3.org/2000/svg';
+    const cx = 100, cy = 100, rOut = 100, rIn = 96;
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const x1 = cx + Math.cos(a) * rIn;
+      const y1 = cy + Math.sin(a) * rIn;
+      const x2 = cx + Math.cos(a) * rOut;
+      const y2 = cy + Math.sin(a) * rOut;
+      const ln = document.createElementNS(NS, 'line');
+      ln.setAttribute('x1', x1.toFixed(2));
+      ln.setAttribute('y1', y1.toFixed(2));
+      ln.setAttribute('x2', x2.toFixed(2));
+      ln.setAttribute('y2', y2.toFixed(2));
+      g.appendChild(ln);
+    }
+  })();
+</script>
+
+<script>
+(async () => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.getElementById('mapSvg');
+  const stationsSvg = document.getElementById('stationsSvg');
+
+  // mock EV adoption stats per state — shown in the hover pop-out.
+  // Values are illustrative (loader UI), not authoritative figures.
+  const STATE_STATS = {
+    'maharashtra':       { stations: 184, adoption: 72 },
+    'karnataka':         { stations: 162, adoption: 78 },
+    'delhi':             { stations: 148, adoption: 84 },
+    'tamil nadu':        { stations: 138, adoption: 68 },
+    'gujarat':           { stations: 126, adoption: 64 },
+    'uttar pradesh':     { stations: 112, adoption: 48 },
+    'rajasthan':         { stations:  98, adoption: 52 },
+    'telangana':         { stations:  94, adoption: 66 },
+    'kerala':            { stations:  88, adoption: 70 },
+    'west bengal':       { stations:  84, adoption: 50 },
+    'andhra pradesh':    { stations:  82, adoption: 56 },
+    'haryana':           { stations:  78, adoption: 60 },
+    'punjab':            { stations:  64, adoption: 54 },
+    'madhya pradesh':    { stations:  72, adoption: 46 },
+    'odisha':            { stations:  58, adoption: 42 },
+    'bihar':             { stations:  44, adoption: 34 },
+    'assam':             { stations:  38, adoption: 38 },
+    'jharkhand':         { stations:  36, adoption: 36 },
+    'chhattisgarh':      { stations:  34, adoption: 38 },
+    'uttarakhand':       { stations:  32, adoption: 44 },
+    'himachal pradesh':  { stations:  28, adoption: 48 },
+    'goa':               { stations:  26, adoption: 74 },
+    'jammu & kashmir':   { stations:  22, adoption: 32 },
+    'jammu and kashmir': { stations:  22, adoption: 32 },
+  };
+  const statKey = (s) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const hashStat = (name) => {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+    const stations = 18 + (Math.abs(h) % 70);
+    const adoption = 30 + (Math.abs(h >> 5) % 50);
+    return { stations, adoption };
+  };
+  const getStats = (name) => STATE_STATS[statKey(name)] || hashStat(name || 'state');
+
+  // ---- point-in-polygon (ray casting) on raw [lon, lat] coords ----
+  function pointInRing(pt, ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const xi = ring[i][0], yi = ring[i][1];
+      const xj = ring[j][0], yj = ring[j][1];
+      const intersect = ((yi > pt[1]) !== (yj > pt[1])) &&
+        (pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+  function pointInPolygon(pt, polygon) {
+    if (!polygon.length || !pointInRing(pt, polygon[0])) return false;
+    for (let i = 1; i < polygon.length; i++) {
+      if (pointInRing(pt, polygon[i])) return false; // inside a hole
+    }
+    return true;
+  }
+  function pointInGeometry(pt, geom) {
+    if (!geom) return false;
+    if (geom.type === 'Polygon') return pointInPolygon(pt, geom.coordinates);
+    if (geom.type === 'MultiPolygon') return geom.coordinates.some(p => pointInPolygon(pt, p));
+    return false;
+  }
+
+  // major Indian cities (lon, lat) – charging-station markers
+  const CITIES = [
+    { name: 'Delhi',     lon: 77.10, lat: 28.70 },
+    { name: 'Mumbai',    lon: 72.87, lat: 19.07 },
+    { name: 'Bengaluru', lon: 77.59, lat: 12.97 },
+    { name: 'Chennai',   lon: 80.27, lat: 13.08 },
+    { name: 'Kolkata',   lon: 88.36, lat: 22.57 },
+    { name: 'Hyderabad', lon: 78.49, lat: 17.39 },
+    { name: 'Pune',      lon: 73.85, lat: 18.52 },
+    { name: 'Ahmedabad', lon: 72.57, lat: 23.02 },
+    { name: 'Jaipur',    lon: 75.79, lat: 26.92 },
+    { name: 'Lucknow',   lon: 80.95, lat: 26.85 },
+    { name: 'Bhopal',    lon: 77.41, lat: 23.26 },
+    { name: 'Guwahati',  lon: 91.74, lat: 26.14 },
+    { name: 'Patna',     lon: 85.14, lat: 25.59 },
+    { name: 'Ranchi',    lon: 85.31, lat: 23.34 },
+    { name: 'Kochi',     lon: 76.27, lat: 9.93  },
+    { name: 'Visakhapatnam', lon: 83.22, lat: 17.69 },
+    { name: 'Chandigarh', lon: 76.78, lat: 30.73 },
+    { name: 'Nagpur',    lon: 79.09, lat: 21.15 },
+    { name: 'Surat',     lon: 72.83, lat: 21.17 },
+  ];
+
+  function drawFallback() {
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('class', 'country');
+    path.setAttribute('d',
+      'M 78 30 L 110 28 L 130 40 L 152 55 L 158 78 L 150 95 ' +
+      'L 158 110 L 150 130 L 130 155 L 110 175 L 95 175 ' +
+      'L 80 155 L 70 130 L 60 110 L 55 90 L 50 70 L 60 50 Z');
+    svg.appendChild(path);
+  }
+
+  const SOURCES = [
+    'https://cdn.jsdelivr.net/gh/adarshbiradar/maps-geojson@master/india.json',
+    'https://cdn.jsdelivr.net/gh/Subhash9325/GeoJson-Data-of-Indian-States@master/Indian_States',
+    'https://cdn.jsdelivr.net/gh/india-in-data/india-states-2019@master/india_states.geojson',
+  ];
+
+  let geo = null;
+  for (const url of SOURCES) {
+    try {
+      const r = await fetch(url, { mode: 'cors' });
+      if (!r.ok) continue;
+      geo = await r.json();
+      if (geo) break;
+    } catch (e) {}
+  }
+  if (!geo || !geo.features) { drawFallback(); return; }
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  function eachRing(coords, fn) { for (const r of coords) for (const p of r) fn(p); }
+  function eachGeom(g, fn) {
+    if (!g) return;
+    if (g.type === 'Polygon') eachRing(g.coordinates, fn);
+    else if (g.type === 'MultiPolygon') for (const p of g.coordinates) eachRing(p, fn);
+  }
+  for (const f of geo.features) {
+    eachGeom(f.geometry, (pt) => {
+      const x = pt[0], y = -pt[1];
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    });
+  }
+
+  const PAD = 22, W = 200, H = 200;
+  const dataW = maxX - minX, dataH = maxY - minY;
+  const scale = Math.min((W - PAD*2) / dataW, (H - PAD*2) / dataH);
+  const offX = (W - dataW * scale) / 2 - minX * scale;
+  const offY = (H - dataH * scale) / 2 - minY * scale;
+
+  const project = (pt) => [pt[0] * scale + offX, (-pt[1]) * scale + offY];
+  const projectLL = (lon, lat) => project([lon, lat]);
+
+  const ringToPath = (ring) => {
+    let d = '';
+    for (let i = 0; i < ring.length; i++) {
+      const [x, y] = project(ring[i]);
+      d += (i === 0 ? 'M' : 'L') + x.toFixed(2) + ' ' + y.toFixed(2) + ' ';
+    }
+    return d + 'Z';
+  };
+  const geomToPath = (g) => {
+    if (!g) return '';
+    if (g.type === 'Polygon') return g.coordinates.map(ringToPath).join(' ');
+    if (g.type === 'MultiPolygon') return g.coordinates.map(p => p.map(ringToPath).join(' ')).join(' ');
+    return '';
+  };
+
+  // 1) country fill (occludes ring/bolt behind it)
+  const countryPath = document.createElementNS(NS, 'path');
+  let combinedD = '';
+  for (const f of geo.features) combinedD += ' ' + geomToPath(f.geometry);
+  countryPath.setAttribute('class', 'country');
+  countryPath.setAttribute('d', combinedD.trim());
+  countryPath.setAttribute('fill-rule', 'evenodd');
+  svg.appendChild(countryPath);
+
+  // 2) state outlines (static, subtle) – with hover-driven pop-out
+  let selectedEl = null;
+
+  // ---- state pop-out card ----
+  const popup       = document.getElementById('statePopup');
+  const popShapeSvg = document.getElementById('popShapeSvg');
+  const popName     = document.getElementById('popName');
+  const popStations = document.getElementById('popStations');
+  const popAdoption = document.getElementById('popAdoption');
+  const popBarFill  = document.getElementById('popBarFill');
+  const popCities   = document.getElementById('popCities');
+
+  function clearPopShape() {
+    // wipe all children except the <defs>
+    [...popShapeSvg.querySelectorAll('.pop-state, .pop-station-halo, .pop-station-core, .pop-station-pulse, .pop-label')]
+      .forEach(n => n.remove());
+  }
+
+  function openStatePopup(feature, name) {
+    clearPopShape();
+    const geom = feature.geometry;
+    if (!geom) return;
+
+    // compute bounding box of the state in raw geo coords
+    let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
+    eachGeom(geom, (pt) => {
+      const lon = pt[0], lat = pt[1];
+      if (lon < minLon) minLon = lon; if (lon > maxLon) maxLon = lon;
+      if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+    });
+    const dataW = maxLon - minLon;
+    const dataH = maxLat - minLat;
+    const BOX = 200, PAD_BOX = 18;
+    const sc = Math.min((BOX - PAD_BOX*2) / dataW, (BOX - PAD_BOX*2) / dataH);
+    const oX = (BOX - dataW * sc) / 2 - minLon * sc;
+    // y is flipped (lat increases northward, svg y increases downward)
+    const oY = (BOX - dataH * sc) / 2 + maxLat * sc;
+    const popProject   = (pt) => [pt[0] * sc + oX, -pt[1] * sc + oY];
+    const popProjectLL = (lon, lat) => [lon * sc + oX, -lat * sc + oY];
+
+    const popRingToPath = (ring) => {
+      let d = '';
+      for (let i = 0; i < ring.length; i++) {
+        const [x, y] = popProject(ring[i]);
+        d += (i === 0 ? 'M' : 'L') + x.toFixed(2) + ' ' + y.toFixed(2) + ' ';
+      }
+      return d + 'Z';
+    };
+    const popGeomToPath = (g) => {
+      if (g.type === 'Polygon') return g.coordinates.map(popRingToPath).join(' ');
+      if (g.type === 'MultiPolygon') return g.coordinates.map(p => p.map(popRingToPath).join(' ')).join(' ');
+      return '';
+    };
+
+    // state shape
+    const shape = document.createElementNS(NS, 'path');
+    shape.setAttribute('class', 'pop-state');
+    shape.setAttribute('d', popGeomToPath(geom));
+    shape.setAttribute('fill-rule', 'evenodd');
+    popShapeSvg.appendChild(shape);
+
+    // stations within the state
+    const inside = CITIES.filter(c => pointInGeometry([c.lon, c.lat], geom));
+    inside.forEach((c, i) => {
+      const [x, y] = popProjectLL(c.lon, c.lat);
+      const delay = ((i % 5) * 0.32).toFixed(2) + 's';
+
+      const halo = document.createElementNS(NS, 'circle');
+      halo.setAttribute('class', 'pop-station-halo');
+      halo.setAttribute('cx', x.toFixed(2));
+      halo.setAttribute('cy', y.toFixed(2));
+      halo.setAttribute('r', '5.5');
+      popShapeSvg.appendChild(halo);
+
+      const pulse = document.createElementNS(NS, 'circle');
+      pulse.setAttribute('class', 'pop-station-pulse');
+      pulse.setAttribute('cx', x.toFixed(2));
+      pulse.setAttribute('cy', y.toFixed(2));
+      pulse.setAttribute('r', '3.5');
+      pulse.style.setProperty('--cx', x.toFixed(2) + 'px');
+      pulse.style.setProperty('--cy', y.toFixed(2) + 'px');
+      pulse.style.setProperty('--delay', delay);
+      popShapeSvg.appendChild(pulse);
+
+      const core = document.createElementNS(NS, 'circle');
+      core.setAttribute('class', 'pop-station-core');
+      core.setAttribute('cx', x.toFixed(2));
+      core.setAttribute('cy', y.toFixed(2));
+      core.setAttribute('r', '2.4');
+      core.style.setProperty('--delay', delay);
+      popShapeSvg.appendChild(core);
+
+      // tiny city label, offset above the dot
+      const lbl = document.createElementNS(NS, 'text');
+      lbl.setAttribute('class', 'pop-label');
+      lbl.setAttribute('x', x.toFixed(2));
+      lbl.setAttribute('y', (y - 6).toFixed(2));
+      lbl.setAttribute('text-anchor', 'middle');
+      lbl.textContent = c.name;
+      popShapeSvg.appendChild(lbl);
+    });
+
+    // header + stats
+    const { stations, adoption } = getStats(name);
+    popName.textContent = name;
+    popStations.textContent = stations;
+    popAdoption.textContent = adoption + '%';
+    // animate bar from 0 -> adoption% (CSS transition handles it)
+    popBarFill.style.width = '0%';
+
+    // city chips (if any stations within state were found)
+    popCities.innerHTML = '';
+    if (inside.length) {
+      inside.forEach(c => {
+        const chip = document.createElement('span');
+        chip.className = 'state-popup-city';
+        chip.textContent = c.name;
+        popCities.appendChild(chip);
+      });
+    } else {
+      const empty = document.createElement('span');
+      empty.className = 'state-popup-empty';
+      empty.textContent = 'No major hub mapped — coverage growing';
+      popCities.appendChild(empty);
+    }
+
+    popup.classList.add('show');
+    popup.setAttribute('aria-hidden', 'false');
+    // next frame, expand the bar
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => { popBarFill.style.width = adoption + '%'; });
+    });
+  }
+
+  function closeStatePopup() {
+    popup.classList.remove('show');
+    popup.setAttribute('aria-hidden', 'true');
+    if (selectedEl) {
+      selectedEl.classList.remove('selected');
+      selectedEl = null;
+    }
+  }
+
+  // close interactions: × button click, Escape key
+  popup.addEventListener('click', (e) => {
+    if (e.target.dataset && e.target.dataset.popupClose !== undefined) closeStatePopup();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && popup.classList.contains('show')) closeStatePopup();
+  });
+
+  // ---- hover-driven open/close with small grace timers ----
+  // Open delay prevents flicker when the cursor sweeps over a state edge.
+  // Close delay lets the cursor cross from state -> card without closing.
+  let openTimer = null, closeTimer = null;
+  const OPEN_DELAY = 90;
+  const CLOSE_DELAY = 280;
+
+  function scheduleOpen(feature, name, el) {
+    if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+    // already open? switch the popup contents immediately, no delay
+    if (popup.classList.contains('show')) {
+      if (selectedEl !== el) {
+        if (selectedEl) selectedEl.classList.remove('selected');
+        selectedEl = el;
+        el.classList.add('selected');
+        openStatePopup(feature, name);
+      }
+      return;
+    }
+    // not yet open — wait briefly so quick fly-bys don't pop the panel
+    if (openTimer) clearTimeout(openTimer);
+    openTimer = setTimeout(() => {
+      openTimer = null;
+      if (selectedEl) selectedEl.classList.remove('selected');
+      selectedEl = el;
+      el.classList.add('selected');
+      openStatePopup(feature, name);
+    }, OPEN_DELAY);
+  }
+
+  function scheduleClose() {
+    if (openTimer) { clearTimeout(openTimer); openTimer = null; }
+    if (closeTimer) clearTimeout(closeTimer);
+    closeTimer = setTimeout(() => {
+      closeTimer = null;
+      closeStatePopup();
+    }, CLOSE_DELAY);
+  }
+
+  // when the cursor enters the popup card itself, keep it alive; when it
+  // leaves, schedule a close (so moving the cursor off the page closes).
+  const popupCard = popup.querySelector('.state-popup-card');
+  popupCard.addEventListener('mouseenter', () => {
+    if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+  });
+  popupCard.addEventListener('mouseleave', () => scheduleClose());
+
+  for (const f of geo.features) {
+    const d = geomToPath(f.geometry);
+    if (!d) continue;
+    const p = document.createElementNS(NS, 'path');
+    p.setAttribute('class', 'state');
+    p.setAttribute('d', d);
+    const name = (f.properties && (f.properties.st_nm || f.properties.NAME_1 || f.properties.ST_NM)) || 'State';
+    p.setAttribute('data-name', name);
+    // hover opens the pop-out for this state; leaving schedules a close
+    p.addEventListener('mouseenter', () => scheduleOpen(f, name, p));
+    p.addEventListener('mouseleave', () => scheduleClose());
+    svg.appendChild(p);
+  }
+
+  // 3) charging-station markers — only render for the three highlighted
+  // states (West Bengal, Bihar, Jharkhand). The rest of CITIES still feeds
+  // the popup point-in-polygon logic so other states show their hubs in
+  // the pop-out card.
+  const HIGHLIGHT_STATES = new Set(['west bengal', 'bihar', 'jharkhand']);
+  const highlightGeoms = geo.features
+    .filter(f => HIGHLIGHT_STATES.has(statKey(
+      (f.properties && (f.properties.st_nm || f.properties.NAME_1 || f.properties.ST_NM)) || ''
+    )))
+    .map(f => f.geometry);
+
+  const visibleStations = CITIES.filter(c =>
+    highlightGeoms.some(g => pointInGeometry([c.lon, c.lat], g))
+  );
+
+  visibleStations.forEach((c, i) => {
+    const [x, y] = projectLL(c.lon, c.lat);
+    const delay = ((i % 7) * 0.32).toFixed(2) + 's';
+
+    // soft halo (static, subtle backdrop)
+    const halo = document.createElementNS(NS, 'circle');
+    halo.setAttribute('class', 'station-halo');
+    halo.setAttribute('cx', x.toFixed(2));
+    halo.setAttribute('cy', y.toFixed(2));
+    halo.setAttribute('r', '3.2');
+    stationsSvg.appendChild(halo);
+
+    // pulsing ring
+    const pulse = document.createElementNS(NS, 'circle');
+    pulse.setAttribute('class', 'station-pulse');
+    pulse.setAttribute('cx', x.toFixed(2));
+    pulse.setAttribute('cy', y.toFixed(2));
+    pulse.setAttribute('r', '2.2');
+    pulse.style.setProperty('--cx', x.toFixed(2) + 'px');
+    pulse.style.setProperty('--cy', y.toFixed(2) + 'px');
+    pulse.style.setProperty('--delay', delay);
+    stationsSvg.appendChild(pulse);
+
+    // core dot
+    const core = document.createElementNS(NS, 'circle');
+    core.setAttribute('class', 'station-core');
+    core.setAttribute('cx', x.toFixed(2));
+    core.setAttribute('cy', y.toFixed(2));
+    core.setAttribute('r', '1.4');
+    core.style.setProperty('--delay', delay);
+    stationsSvg.appendChild(core);
+  });
+})();
+</script>
+</body>
+</html>

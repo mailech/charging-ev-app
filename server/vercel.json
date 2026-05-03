@@ -1,0 +1,15 @@
+{
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "framework": null,
+    "installCommand": "cd .. && bun install --frozen-lockfile",
+    "buildCommand": "mkdir -p public && echo '<title>API</title>' > public/index.html && cd .. && bun --cwd server run vercel-build",
+    "outputDirectory": "public",
+    "functions": {
+        "api/index.ts": {
+            "memory": 1024,
+            "maxDuration": 30
+        }
+    },
+    "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
+}
+

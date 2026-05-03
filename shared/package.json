@@ -1,0 +1,32 @@
+{
+    "name": "@trio/shared",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "main": "src/index.ts",
+    "types": "src/index.ts",
+    "exports": {
+        ".": "./src/index.ts",
+        "./auth": "./src/auth.ts",
+        "./inquiry": "./src/inquiry.ts",
+        "./dashboard": "./src/dashboard.ts",
+        "./blog": "./src/blog.ts",
+        "./blog-render": "./src/blog-render.ts",
+        "./carousel": "./src/carousel.ts",
+        "./notice": "./src/notice.ts"
+    },
+    "dependencies": {
+        "zod": "^3.23.8"
+    },
+    "peerDependencies": {
+        "react": "^18.0.0"
+    },
+    "peerDependenciesMeta": {
+        "react": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@types/react": "^18.3.12"
+    }
+}

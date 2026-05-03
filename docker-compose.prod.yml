@@ -1,0 +1,69 @@
+# Production override.
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Differences vs base:
+#   - Both apps build the `prod` target (no source bind mounts)
+#   - Client served by nginx on host port 80
+#   - No volume mounts for source or node_modules
+#   - JWT_SECRET / DATABASE_URL must come from a real .env or your secret store
+
+services:
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+      target: prod
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8001}
+    command: ["nginx", "-g", "daemon off;"]
+    working_dir: /
+    ports:
+      - "80:80"
+    volumes: []
+    environment: {}
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: .
+      dockerfile: admin/Dockerfile
+      target: prod
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8001}
+    command: ["nginx", "-g", "daemon off;"]
+    working_dir: /
+    ports:
+      - "${ADMIN_PORT:-81}:80"
+    volumes: []
+    environment: {}
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+      target: prod
+    command: ["bun", "src/index.ts"]
+    working_dir: /app/server
+    volumes: []
+    environment:
+      NODE_ENV: production
+      PORT: 8001
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      S3_REGION: ${S3_REGION:?S3_REGION is required}
+      S3_BUCKET: ${S3_BUCKET:?S3_BUCKET is required}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?S3_ACCESS_KEY_ID is required}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?S3_SECRET_ACCESS_KEY is required}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-false}
+    restart: unless-stopped
+
+  db:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    ports: []
+    restart: unless-stopped
