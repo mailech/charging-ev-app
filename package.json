@@ -5,6 +5,7 @@
     "workspaces": [
         "shared",
         "client",
+        "client2",
         "admin",
         "server"
     ],
