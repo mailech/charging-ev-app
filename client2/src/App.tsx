@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import logo from './assets/logo.png'
 import charger3d from './assets/charger-3d.png'
 import hub3d from './assets/Screenshot_2026-05-05_004406-removebg-preview.png'
-import worldMap from './assets/world-map.png'
 
 const ACCENT = '#7CFF00'
 const BG = '#0A0D0C'
@@ -587,7 +586,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* GLOBAL COVERAGE — map section */}
+      {/* INDIA COVERAGE — map section */}
       <section style={{ position: 'relative', padding: '160px 80px 140px', background: '#080a09', borderTop: `1px solid ${BORDER}`, overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, opacity: 0.4, backgroundImage: `radial-gradient(${BORDER} 1px, transparent 1px)`, backgroundSize: '60px 60px', maskImage: 'radial-gradient(ellipse at center, black 40%, transparent 90%)', WebkitMaskImage: 'radial-gradient(ellipse at center, black 40%, transparent 90%)' }} />
 
@@ -597,20 +596,20 @@ export default function App() {
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
               <div className="mono" style={{ display: 'inline-flex', alignItems: 'center', gap: 12, fontSize: '0.7rem', color: ACCENT, fontWeight: 900, letterSpacing: 5, marginBottom: 22 }}>
                 <span style={{ width: 28, height: 1, background: ACCENT }} />
-                GLOBAL_COVERAGE / REAL-TIME
+                INDIA_COVERAGE / REAL-TIME
               </div>
               <h2 style={{ fontSize: 'clamp(2.4rem, 4.6vw, 4.2rem)', fontWeight: 900, letterSpacing: -2, lineHeight: 0.95 }}>
-                ONE NETWORK.<br />EVERY <span style={{ color: ACCENT }}>CONTINENT</span>.
+                ONE NETWORK.<br />EVERY <span style={{ color: ACCENT }}>STATE</span>.
               </h2>
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.15 }} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', border: `1px solid ${BORDER}`, position: 'relative', background: 'rgba(0,0,0,0.4)' }}>
               <span className="bracket bracket-tl" /><span className="bracket bracket-tr" />
               <span className="bracket bracket-bl" /><span className="bracket bracket-br" />
               {[
-                { v: '47', l: 'COUNTRIES', acc: false },
-                { v: '2,847', l: 'STATIONS', acc: true },
-                { v: '184M', l: 'kWh / YR', acc: false },
-                { v: '5', l: 'CONTINENTS', acc: true },
+                { v: '28', l: 'STATES', acc: false },
+                { v: '1,847', l: 'STATIONS', acc: true },
+                { v: '142M', l: 'kWh / YR', acc: false },
+                { v: '9', l: 'METROS', acc: true },
               ].map((s, i) => (
                 <div key={i} style={{ padding: '22px 12px', borderRight: i < 3 ? `1px solid ${BORDER}` : 'none', textAlign: 'center' }}>
                   <div style={{ fontSize: '1.7rem', fontWeight: 900, fontVariantNumeric: 'tabular-nums', color: s.acc ? ACCENT : '#fff', letterSpacing: -1 }}>{s.v}</div>
@@ -620,53 +619,102 @@ export default function App() {
             </motion.div>
           </div>
 
-          {/* MAP CANVAS */}
-          <div style={{ position: 'relative', width: '100%', aspectRatio: '2.2 / 1', background: 'rgba(0,0,0,0.55)', border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
+          {/* MAP CANVAS — INDIA */}
+          <div style={{ position: 'relative', width: '100%', aspectRatio: '1.8 / 1', background: 'rgba(0,0,0,0.55)', border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
             <span className="bracket bracket-tl" /><span className="bracket bracket-tr" />
             <span className="bracket bracket-bl" /><span className="bracket bracket-br" />
 
-            {/* World map base */}
-            <img src={worldMap} alt="world" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.35, filter: 'grayscale(1) brightness(0.55) contrast(1.5) hue-rotate(60deg) saturate(2)', mixBlendMode: 'screen' }} />
+            {/* SVG: grid + India outline + station dots */}
+            <svg viewBox="0 0 1800 1000" preserveAspectRatio="xMidYMid meet" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+              <defs>
+                <pattern id="mapgrid" width="60" height="60" patternUnits="userSpaceOnUse">
+                  <path d="M 60 0 L 0 0 0 60" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                </pattern>
+                <pattern id="indiaStipple" width="22" height="22" patternUnits="userSpaceOnUse">
+                  <circle cx="11" cy="11" r="0.9" fill={ACCENT} opacity="0.35" />
+                </pattern>
+                <path id="indiaPath" d="M 295 35 C 335 38, 380 50, 425 75 C 470 95, 510 120, 535 155 C 545 180, 535 205, 510 215 C 490 220, 472 215, 470 232 C 478 252, 495 275, 482 300 C 470 320, 448 330, 430 340 L 425 380 C 415 425, 400 470, 380 510 C 360 550, 335 590, 310 625 L 285 660 C 280 670, 268 668, 265 658 L 250 620 C 235 580, 215 535, 195 490 C 175 445, 158 400, 148 355 C 132 310, 112 270, 95 230 C 82 195, 92 160, 112 140 C 142 115, 178 100, 218 82 C 248 65, 270 50, 295 35 Z" />
+                <clipPath id="indiaClip">
+                  <use href="#indiaPath" transform="translate(478, 31) scale(1.34)" />
+                </clipPath>
+              </defs>
 
-            {/* Overlay grid lines */}
-            <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(${BORDER} 1px, transparent 1px), linear-gradient(90deg, ${BORDER} 1px, transparent 1px)`, backgroundSize: '60px 60px', opacity: 0.4 }} />
+              {/* Background grid */}
+              <rect width="1800" height="1000" fill="url(#mapgrid)" opacity="0.55" />
+
+              {/* India outline + stipple fill */}
+              <g>
+                <rect x="0" y="0" width="1800" height="1000" fill="url(#indiaStipple)" clipPath="url(#indiaClip)" />
+                <use href="#indiaPath" transform="translate(478, 31) scale(1.34)" fill="rgba(124,255,0,0.04)" stroke="rgba(124,255,0,0.55)" strokeWidth="1.4" style={{ filter: `drop-shadow(0 0 14px ${ACCENT}44)` }} />
+                {/* Sri Lanka */}
+                <path
+                  d="M 305 695 C 320 705, 322 730, 312 745 C 298 750, 290 735, 295 715 C 300 700, 303 695, 305 695 Z"
+                  transform="translate(478, 31) scale(1.34)"
+                  fill="rgba(124,255,0,0.04)" stroke="rgba(124,255,0,0.4)" strokeWidth="1"
+                />
+              </g>
+
+              {/* Station dots — pulse ring + core */}
+              {[
+                { x: 826, y: 299 }, { x: 692, y: 540 }, { x: 1054, y: 460 },
+                { x: 934, y: 755 }, { x: 867, y: 775 }, { x: 893, y: 647 },
+                { x: 685, y: 419 }, { x: 746, y: 366 }, { x: 719, y: 580 },
+              ].map((p, i) => (
+                <g key={i} transform={`translate(${p.x} ${p.y})`}>
+                  <circle r="6" fill="none" stroke={ACCENT} strokeWidth="1.5">
+                    <animate attributeName="r" values="6;28;6" dur="2.6s" begin={`${i * 0.25}s`} repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0.8;0;0.8" dur="2.6s" begin={`${i * 0.25}s`} repeatCount="indefinite" />
+                  </circle>
+                  <circle r="5" fill={ACCENT} style={{ filter: `drop-shadow(0 0 10px ${ACCENT})` }} />
+                </g>
+              ))}
+            </svg>
 
             {/* Vertical scanline */}
-            <motion.div animate={{ left: ['-2%', '102%'] }} transition={{ duration: 9, repeat: Infinity, ease: 'linear' }} style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: `linear-gradient(180deg, transparent, ${ACCENT}, transparent)`, boxShadow: `0 0 24px ${ACCENT}`, opacity: 0.7 }} />
+            <motion.div animate={{ left: ['-2%', '102%'] }} transition={{ duration: 9, repeat: Infinity, ease: 'linear' }} style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: `linear-gradient(180deg, transparent, ${ACCENT}, transparent)`, boxShadow: `0 0 24px ${ACCENT}`, opacity: 0.7, zIndex: 4 }} />
 
-            {/* Pulsing station nodes */}
+            {/* HTML labels (positioned by SVG viewBox %) */}
             {[
-              { city: 'NEW YORK', x: '24%', y: '40%', count: '247' },
-              { city: 'LA', x: '15%', y: '46%', count: '198' },
-              { city: 'SAO PAULO', x: '32%', y: '70%', count: '67' },
-              { city: 'LONDON', x: '47%', y: '34%', count: '184' },
-              { city: 'BERLIN', x: '51%', y: '36%', count: '128' },
-              { city: 'DUBAI', x: '60%', y: '48%', count: '89' },
-              { city: 'TOKYO', x: '83%', y: '42%', count: '312' },
-              { city: 'SINGAPORE', x: '76%', y: '60%', count: '156' },
-              { city: 'SYDNEY', x: '86%', y: '76%', count: '94' },
+              { city: 'DELHI', x: 826, y: 299, count: '247', dir: 'R' },
+              { city: 'MUMBAI', x: 692, y: 540, count: '198', dir: 'L' },
+              { city: 'KOLKATA', x: 1054, y: 460, count: '184', dir: 'R' },
+              { city: 'CHENNAI', x: 934, y: 755, count: '156', dir: 'R' },
+              { city: 'BENGALURU', x: 867, y: 775, count: '312', dir: 'L' },
+              { city: 'HYDERABAD', x: 893, y: 647, count: '128', dir: 'R' },
+              { city: 'AHMEDABAD', x: 685, y: 419, count: '94', dir: 'L' },
+              { city: 'JAIPUR', x: 746, y: 366, count: '67', dir: 'L' },
+              { city: 'PUNE', x: 719, y: 580, count: '89', dir: 'L' },
             ].map((c, i) => (
-              <div key={i} style={{ position: 'absolute', left: c.x, top: c.y, transform: 'translate(-50%, -50%)', zIndex: 8 }}>
-                <motion.div className="circle" animate={{ scale: [1, 3, 1], opacity: [0.7, 0, 0.7] }} transition={{ duration: 2.6, repeat: Infinity, delay: i * 0.25 }} style={{ position: 'absolute', inset: -3, border: `1px solid ${ACCENT}`, width: 14, height: 14 }} />
-                <div className="circle" style={{ width: 8, height: 8, background: ACCENT, boxShadow: `0 0 14px ${ACCENT}` }} />
-                <div className="mono" style={{ position: 'absolute', left: 16, top: -4, fontSize: '0.55rem', color: 'rgba(255,255,255,0.75)', letterSpacing: 1.5, fontWeight: 800, whiteSpace: 'nowrap', lineHeight: 1.2 }}>
-                  {c.city}<br /><span style={{ color: ACCENT }}>● {c.count}</span>
+              <div key={i} style={{ position: 'absolute', left: `${(c.x / 1800) * 100}%`, top: `${(c.y / 1000) * 100}%`, zIndex: 8, pointerEvents: 'none' }}>
+                <div className="mono" style={{
+                  position: 'absolute',
+                  left: c.dir === 'R' ? 14 : 'auto',
+                  right: c.dir === 'L' ? 14 : 'auto',
+                  top: -8,
+                  fontSize: '0.55rem',
+                  color: 'rgba(255,255,255,0.78)',
+                  letterSpacing: 1.5,
+                  fontWeight: 800,
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1.3,
+                  textAlign: c.dir === 'L' ? 'right' : 'left',
+                }}>
+                  {c.city}
+                  <div style={{ color: ACCENT, fontSize: '0.55rem' }}>● {c.count}</div>
                 </div>
               </div>
             ))}
 
             {/* Top-left readout */}
-            <div className="mono" style={{ position: 'absolute', top: 24, left: 28, fontSize: '0.6rem', color: 'rgba(255,255,255,0.55)', fontWeight: 800, letterSpacing: 2, lineHeight: 1.6 }}>
-              <div>// COVERAGE_MAP_v4.7</div>
-              <div style={{ color: ACCENT }}>● 9 NODES VISIBLE</div>
+            <div className="mono" style={{ position: 'absolute', top: 24, left: 28, fontSize: '0.6rem', color: 'rgba(255,255,255,0.55)', fontWeight: 800, letterSpacing: 2, lineHeight: 1.6, zIndex: 6 }}>
+              <div>// COVERAGE_MAP_v4.7 / IN</div>
+              <div style={{ color: ACCENT }}>● 9 METROS VISIBLE</div>
             </div>
             {/* Bottom-right readout */}
-            <div className="mono" style={{ position: 'absolute', bottom: 24, right: 28, fontSize: '0.6rem', color: 'rgba(255,255,255,0.55)', fontWeight: 800, letterSpacing: 2, textAlign: 'right', lineHeight: 1.6 }}>
-              <div>LAT/LON · LIVE</div>
+            <div className="mono" style={{ position: 'absolute', bottom: 24, right: 28, fontSize: '0.6rem', color: 'rgba(255,255,255,0.55)', fontWeight: 800, letterSpacing: 2, textAlign: 'right', lineHeight: 1.6, zIndex: 6 }}>
+              <div>GEO · BHARAT</div>
               <div style={{ color: ACCENT }}>SYNC · OK</div>
             </div>
-            {/* Crosshair center */}
-            <div className="mono" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '0.5rem', color: 'rgba(255,255,255,0.2)', letterSpacing: 2 }}>+</div>
           </div>
 
           {/* Region cards row */}
@@ -674,10 +722,10 @@ export default function App() {
             <span className="bracket bracket-tl" /><span className="bracket bracket-tr" />
             <span className="bracket bracket-bl" /><span className="bracket bracket-br" />
             {[
-              { region: 'NORTH AMERICA', stations: '847', flag: 'NA', growth: '+18% Q4' },
-              { region: 'EUROPE', stations: '1,124', flag: 'EU', growth: '+24% Q4' },
-              { region: 'APAC', stations: '622', flag: 'AP', growth: '+41% Q4' },
-              { region: 'MEA / SA', stations: '254', flag: 'MS', growth: '+62% Q4' },
+              { region: 'NORTH', sub: 'NCR · PB · HR · UP', stations: '412', flag: 'IN-N', growth: '+24% Q4' },
+              { region: 'WEST', sub: 'MH · GJ · GA · MP', stations: '587', flag: 'IN-W', growth: '+28% Q4' },
+              { region: 'SOUTH', sub: 'KA · TN · TS · KL', stations: '624', flag: 'IN-S', growth: '+32% Q4' },
+              { region: 'EAST + NE', sub: 'WB · OR · AS · BR', stations: '224', flag: 'IN-E', growth: '+56% Q4' },
             ].map((r, i) => (
               <motion.div key={i}
                 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}
@@ -687,7 +735,8 @@ export default function App() {
                   <span className="mono" style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.35)', letterSpacing: 2.5, fontWeight: 800 }}>// REGION_0{i + 1}</span>
                   <span className="mono" style={{ fontSize: '0.55rem', color: ACCENT, letterSpacing: 1.5, fontWeight: 800 }}>{r.flag}</span>
                 </div>
-                <div style={{ fontSize: '0.95rem', fontWeight: 900, letterSpacing: -0.5, marginBottom: 14 }}>{r.region}</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 900, letterSpacing: -0.5, marginBottom: 4 }}>{r.region}</div>
+                <div className="mono" style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, fontWeight: 700, marginBottom: 14 }}>{r.sub}</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 8 }}>
                   <span style={{ fontSize: '2.1rem', fontWeight: 900, fontVariantNumeric: 'tabular-nums', color: ACCENT, letterSpacing: -1 }}>{r.stations}</span>
                   <span className="mono" style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, fontWeight: 800 }}>STATIONS</span>
