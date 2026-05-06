@@ -1053,7 +1053,7 @@ export default function App() {
           </section>
 
           {/* CORPORATE PLANS */}
-          <section id="plans" style={{ padding: '140px 88px 140px', background: BG, borderTop: `1px solid ${BORDER}` }}>
+          {/* <section id="plans" style={{ padding: '140px 88px 140px', background: BG, borderTop: `1px solid ${BORDER}` }}>
             <div style={{ maxWidth: 1440, margin: '0 auto 64px', textAlign: 'center' }}>
               <div className="eyebrow" style={{ marginBottom: 14 }}>Plans · Fleets</div>
               <h2 style={{ fontSize: 'clamp(2rem, 3.6vw, 3.4rem)', fontWeight: 600, marginBottom: 14, letterSpacing: -0.028 }}>
@@ -1152,7 +1152,7 @@ export default function App() {
               </div>
               <button className="btn-ghost" style={{ padding: '11px 22px', fontSize: '0.85rem' }}>Talk to our team →</button>
             </div>
-          </section>
+          </section> */}
         </>
       )}
 
