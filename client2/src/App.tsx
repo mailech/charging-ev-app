@@ -1,9 +1,14 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import logo from './assets/logo.png'
 import charger3d from './assets/charger-3d.png'
 import hub3d from './assets/Screenshot_2026-05-05_004406-removebg-preview.png'
 import serviceImg from './assets/Screenshot_2026-05-06_131630-removebg-preview-Picsart-AiImageEnhancer.png'
+import { NoticeModal } from './components/NoticeModal';
+import { HeroCarousel } from './components/HeroCarousel';
+import { BlogPage } from './components/BlogPage';
+import { ContactSalesForm } from './components/ContactSalesForm';
+import { trackPageView } from './lib/track';
 
 const ACCENT = '#00FF88'           // vibrant electric lime (from offline)
 const ACCENT_SOFT = '#00CC77'      // secondary energy green
@@ -325,6 +330,10 @@ export default function App() {
     return () => { clearInterval(id); clearInterval(id2); clearInterval(id3); };
   }, []);
 
+  useEffect(() => {
+    trackPageView('/' + (page === 'home' ? '' : page));
+  }, [page]);
+
   // Fetch real India GeoJSON and build projected SVG path
   useEffect(() => {
     let cancelled = false;
@@ -592,122 +601,13 @@ export default function App() {
         </div>
       </nav>
 
-      <AnimatePresence>
-        {showContactForm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 2000,
-              background: 'rgba(5, 7, 6, 0.96)',
-              backdropFilter: 'blur(32px)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 40
-            }}
-          >
-            {/* Close Button */}
-            <button
-              onClick={() => setShowContactForm(false)}
-              style={{ position: 'absolute', top: 40, right: 40, background: 'none', border: 'none', color: TEXT_DIM, cursor: 'pointer', transition: 'color 0.2s' }}
-              onMouseEnter={(e: any) => e.target.style.color = TEXT}
-              onMouseLeave={(e: any) => e.target.style.color = TEXT_DIM}
-            >
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
+      <NoticeModal />
+      <ContactSalesForm
+        open={showContactForm}
+        onClose={() => setShowContactForm(false)}
+      />
 
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              style={{ width: '100%', maxWidth: 1000, display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: 60 }}
-            >
-              {/* Left Column: Info */}
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'rgba(0, 255, 136, 0.08)', border: '1px solid rgba(0, 255, 136, 0.2)', borderRadius: 99, width: 'fit-content', marginBottom: 32 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                  <span style={{ fontSize: '0.65rem', fontWeight: 700, color: ACCENT, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Talk to us</span>
-                </div>
-
-                <h2 style={{ fontSize: '3rem', fontWeight: 800, color: '#fff', lineHeight: 1.1, marginBottom: 20, letterSpacing: '-0.04em' }}>
-                  Let's electrify <br />
-                  <span style={{ color: ACCENT }}>your fleet.</span>
-                </h2>
-
-                <p style={{ fontSize: '1rem', color: TEXT_DIM, lineHeight: 1.6, marginBottom: 40, maxWidth: 380 }}>
-                  Whether you're scaling rentals, leasing for a growing business, or moving employees daily — share what you need and our team will plan the route forward.
-                </p>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                  {[
-                    { icon: 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6', label: 'EMAIL', value: 'hello@trio.ev' },
-                    { icon: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z', label: 'WHATSAPP', value: '+91 98xxx xxxxx' },
-                    { icon: 'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', label: 'HQ', value: 'Bengaluru, India' }
-                  ].map(item => (
-                    <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                      <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ACCENT }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={item.icon}></path></svg>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: TEXT_DIM, letterSpacing: '0.1em' }}>{item.label}</div>
-                        <div style={{ fontSize: '1rem', color: TEXT, fontWeight: 500 }}>{item.value}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Right Column: Form */}
-              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 24, padding: 32, position: 'relative' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: TEXT_DIM, letterSpacing: '0.05em' }}>NAME</label>
-                    <input placeholder="Your full name" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '14px 18px', color: TEXT, outline: 'none', fontSize: '0.9rem' }} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: TEXT_DIM, letterSpacing: '0.05em' }}>EMAIL</label>
-                    <input placeholder="you@company.com" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '14px 18px', color: TEXT, outline: 'none', fontSize: '0.9rem' }} />
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
-                  <label style={{ fontSize: '0.7rem', fontWeight: 700, color: TEXT_DIM, letterSpacing: '0.05em' }}>PHONE <span style={{ opacity: 0.5, fontWeight: 400 }}>optional</span></label>
-                  <input placeholder="+91 98xxx xxxxx" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '14px 18px', color: TEXT, outline: 'none', fontSize: '0.9rem' }} />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
-                  <label style={{ fontSize: '0.7rem', fontWeight: 700, color: TEXT_DIM, letterSpacing: '0.05em' }}>INQUIRY TYPE</label>
-                  <select style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '14px 18px', color: TEXT, outline: 'none', fontSize: '0.9rem', cursor: 'pointer', appearance: 'none' }}>
-                    <option style={{ background: CARD, color: TEXT }}>Select type</option>
-                    <option style={{ background: CARD, color: TEXT }}>Fleet Charging Partnership</option>
-                    <option style={{ background: CARD, color: TEXT }}>Station Installation</option>
-                    <option style={{ background: CARD, color: TEXT }}>Individual Charging Plan</option>
-                    <option style={{ background: CARD, color: TEXT }}>Other</option>
-                  </select>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 32 }}>
-                  <label style={{ fontSize: '0.7rem', fontWeight: 700, color: TEXT_DIM, letterSpacing: '0.05em' }}>MESSAGE</label>
-                  <textarea placeholder="A few details about your needs..." style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '14px 18px', color: TEXT, outline: 'none', fontSize: '0.9rem', minHeight: 120, resize: 'none' }} />
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: '0.75rem', color: TEXT_DIM }}>We respond within one business day. No spam, ever.</div>
-                  <button className="btn-accent" style={{ padding: '14px 28px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                    Send inquiry
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {page === 'home' && <HeroCarousel fallback={null} />}
 
       {page === 'home' && (
         <>
@@ -1225,14 +1125,7 @@ export default function App() {
         </section>
       )}
 
-      {page === 'blog' && (
-        <section style={{ background: BG, paddingTop: '120px', paddingBottom: '100px', minHeight: '80vh' }}>
-          <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 40px', textAlign: 'center' }}>
-            <h1 style={{ fontSize: '4rem', fontWeight: 800, marginBottom: 24, color: '#fff' }}>Blog</h1>
-            <p style={{ fontSize: '1.25rem', color: TEXT_DIM }}>Coming soon. We are preparing insights into the future of electric mobility.</p>
-          </div>
-        </section>
-      )}
+      {page === 'blog' && <BlogPage />}
 
       <footer style={{ padding: '80px 88px 40px', background: SURFACE, borderTop: `1px solid ${BORDER}` }}>
         <div style={{ maxWidth: 1440, margin: '0 auto' }}>
