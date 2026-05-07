@@ -4,6 +4,7 @@ import logo from './assets/logo.png'
 import charger3d from './assets/charger-3d.png'
 import hub3d from './assets/Screenshot_2026-05-05_004406-removebg-preview.png'
 import serviceImg from './assets/Screenshot_2026-05-06_131630-removebg-preview-Picsart-AiImageEnhancer.png'
+import professorImg from './assets/Screenshot_2026-05-08_003804-removebg-preview.png'
 
 const ACCENT = '#00FF88'           // vibrant electric lime (from offline)
 const ACCENT_SOFT = '#00CC77'      // secondary energy green
@@ -118,6 +119,21 @@ const STATIONS = [
   { id: 'TN-T81', name: 'OMR Gateway', state: 'Tamil Nadu', lon: 80.23, lat: 12.89, kw: 150, conn: 'CCS' },
 ];
 
+const WHY_SLIDES = [
+  {
+    title: 'CRUCIAL FOR ELECTRIC VEHICLE ADOPTION',
+    text: "Experts widely agree that a robust, reliable, and accessible network of charging stations is the absolute foundation for the widespread adoption of electric vehicles (EVs) globally. The availability of charging infrastructure is a primary factor influencing consumers' willingness to switch from internal combustion engine vehicles, directly addressing 'range anxiety' and ensuring that long-distance travel becomes as seamless as traditional refueling."
+  },
+  {
+    title: 'REDUCING ENVIRONMENTAL IMPACT',
+    text: "Experts recognize that EV charging stations are instrumental in drastically reducing the environmental impact of modern transportation systems. Unlike fossil-fuel-powered cars, EVs produce zero tailpipe emissions. When these vehicles are charged using renewable energy sources—such as solar, wind, or hydroelectric power—their total carbon footprint is significantly lower, contributing to cleaner air and a more sustainable future."
+  },
+  {
+    title: 'DRIVING THE FUTURE OF MOBILITY',
+    text: "By integrating smart grid technology and distributed renewable energy, EV charging infrastructure becomes more than just a power source—it's the backbone of a sustainable, connected ecosystem. This synergy allows for 'Vehicle-to-Grid' (V2G) capabilities, where EVs can actually return power to the grid during peak demand, creating a balanced and resilient energy network that powers the smart cities of tomorrow."
+  }
+];
+
 export default function App() {
   const [sessions] = useState([
     { id: 'TR-01', status: 'CHARGING', power: '150kW' },
@@ -139,6 +155,14 @@ export default function App() {
   const [selectedClusterId, setSelectedClusterId] = useState<string | null>(null);
   const [activeService, setActiveService] = useState(0);
   const [showContactForm, setShowContactForm] = useState(false);
+  const [whySlide, setWhySlide] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setWhySlide(prev => (prev + 1) % WHY_SLIDES.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
 
   const filteredStations = STATIONS.filter(s => {
     const matchesQuery = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -925,6 +949,222 @@ export default function App() {
                   title="Energy Synapse Dashboard"
                   scrolling="no"
                 />
+              </div>
+            </div>
+          </section>
+
+          {/* WHY EV CHARGING SECTION */}
+          <section id="why-ev" style={{ padding: '70px 88px 100px', background: '#000', position: 'relative', overflow: 'hidden' }}>
+            {/* Background Glow */}
+            <div style={{ position: 'absolute', left: '-10%', top: '40%', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(0, 255, 136, 0.05) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 1 }} />
+
+            <div style={{ maxWidth: 1440, margin: '0 auto', position: 'relative', zIndex: 5 }}>
+              {/* Header */}
+              <div style={{ textAlign: 'center', marginBottom: 50 }}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6 }}
+                  style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.2em', color: '#e0e0e0', marginBottom: 16, textTransform: 'uppercase' }}
+                >
+                  EV CHARGING IS THE BEST FOR ELECTRICAL VEHICLES
+                </motion.div>
+
+                <motion.h2
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.8, delay: 0.1 }}
+                  style={{
+                    fontSize: 'clamp(3rem, 6vw, 6.5rem)',
+                    fontWeight: 800,
+                    letterSpacing: -0.01,
+                    marginBottom: 32,
+                    textTransform: 'uppercase',
+                    background: 'linear-gradient(180deg, #FFFFFF 0%, #B0B0B0 45%, #606060 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    filter: 'drop-shadow(0px 8px 16px rgba(0,0,0,0.4))'
+                  }}
+                >
+                  WHY EV CHARGING?
+                </motion.h2>
+
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.8, delay: 0.3 }}
+                  style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1.1rem', fontWeight: 400, maxWidth: 800, margin: '0 auto', lineHeight: 1.6 }}
+                >
+                  Electric vehicle (EV) charging is at the forefront of a transportation revolution that is reshaping the way we move and the world we live in.
+                </motion.p>
+              </div>
+
+              {/* Content Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 100, alignItems: 'center' }}>
+                {/* Left side: Text Carousel */}
+                <div style={{ position: 'relative' }}>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={whySlide}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ duration: 0.5 }}
+                      style={{ minHeight: '320px' }}
+                    >
+                      <h3 style={{
+                        fontSize: '1.8rem',
+                        fontWeight: 700,
+                        color: '#ffffff',
+                        textTransform: 'uppercase',
+                        marginBottom: 32,
+                        letterSpacing: '0.02em',
+                        background: 'linear-gradient(180deg, #FFFFFF 0%, #A0A0A0 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent'
+                      }}>
+                        {WHY_SLIDES[whySlide].title}
+                      </h3>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1rem', lineHeight: 1.7 }}>
+                          {WHY_SLIDES[whySlide].text}
+                        </p>
+                      </div>
+                    </motion.div>
+                  </AnimatePresence>
+
+                  {/* Carousel Controls */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: 0.6 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 24, marginTop: 48 }}
+                  >
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <button
+                        onClick={() => setWhySlide(prev => (prev - 1 + WHY_SLIDES.length) % WHY_SLIDES.length)}
+                        style={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: '50%',
+                          border: '1px solid rgba(132, 204, 22, 0.4)',
+                          background: 'rgba(132, 204, 22, 0.05)',
+                          color: '#84cc16',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s'
+                        }}
+                        onMouseEnter={(e: any) => { e.currentTarget.style.background = 'rgba(132, 204, 22, 0.15)'; e.currentTarget.style.borderColor = '#84cc16'; }}
+                        onMouseLeave={(e: any) => { e.currentTarget.style.background = 'rgba(132, 204, 22, 0.05)'; e.currentTarget.style.borderColor = 'rgba(132, 204, 22, 0.4)'; }}
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                      </button>
+
+                      <button
+                        onClick={() => setWhySlide(prev => (prev + 1) % WHY_SLIDES.length)}
+                        style={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: '50%',
+                          border: '1px solid rgba(132, 204, 22, 0.4)',
+                          background: 'rgba(132, 204, 22, 0.05)',
+                          color: '#84cc16',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s'
+                        }}
+                        onMouseEnter={(e: any) => { e.currentTarget.style.background = 'rgba(132, 204, 22, 0.15)'; e.currentTarget.style.borderColor = '#84cc16'; }}
+                        onMouseLeave={(e: any) => { e.currentTarget.style.background = 'rgba(132, 204, 22, 0.05)'; e.currentTarget.style.borderColor = 'rgba(132, 204, 22, 0.4)'; }}
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {WHY_SLIDES.map((_, i) => (
+                        <div
+                          key={i}
+                          onClick={() => setWhySlide(i)}
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: '50%',
+                            background: whySlide === i ? '#84cc16' : 'rgba(255,255,255,0.2)',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s'
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </motion.div>
+                </div>
+
+                {/* Right side: Professor Profile */}
+                <div style={{ textAlign: 'right' }}>
+                  <motion.div
+                    initial={{ opacity: 0, x: 40 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 1, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                    style={{ position: 'relative', display: 'inline-block' }}
+                  >
+                    {/* Image Container with Gradient Background */}
+                    <div style={{
+                      width: '420px',
+                      height: '520px',
+                      background: 'radial-gradient(circle at center, rgba(0, 255, 136, 0.08) 0%, transparent 70%)',
+                      borderRadius: '20px',
+                      overflow: 'hidden',
+                      position: 'relative',
+                    }}>
+                      <img
+                        src={professorImg}
+                        alt="David M. Johnson"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'contain',
+                          objectPosition: 'bottom center',
+                          filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.5))'
+                        }}
+                      />
+                    </div>
+
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.8, delay: 0.8 }}
+                      style={{ marginTop: 32 }}
+                    >
+                      <h4 style={{
+                        fontSize: '3.2rem',
+                        fontWeight: 800,
+                        color: '#ffffff',
+                        textTransform: 'uppercase',
+                        letterSpacing: '-0.02em',
+                        marginBottom: 4,
+                        background: 'linear-gradient(180deg, #FFFFFF 0%, #B0B0B0 45%, #606060 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                      }}>
+                        DAVID M. JOHNSON
+                      </h4>
+                      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+                        ENVIRONMENT PROFESSOR AT HARVARD
+                      </p>
+                    </motion.div>
+                  </motion.div>
+                </div>
               </div>
             </div>
           </section>
