@@ -1,17 +1,17 @@
-import { useState, useEffect, useRef } from 'react'
-import { motion } from 'framer-motion';
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion';
 import logo from './assets/logo.png'
 import charger3d from './assets/charger-3d.png'
 import hub3d from './assets/Screenshot_2026-05-05_004406-removebg-preview.png'
 import serviceImg from './assets/Screenshot_2026-05-06_131630-removebg-preview-Picsart-AiImageEnhancer.png'
 
-const ACCENT = '#9FE870'           // muted electric lime
-const ACCENT_SOFT = '#6BAA75'      // secondary energy green
+const ACCENT = '#00FF88'           // vibrant electric lime (from offline)
+const ACCENT_SOFT = '#00CC77'      // secondary energy green
 const BG = '#0B0F0D'               // dark graphite primary
 const SURFACE = '#111715'          // secondary surface
 const CARD = '#151B18'             // card surface
-const BORDER = 'rgba(120,255,120,0.08)'
-const BORDER_STRONG = 'rgba(159,232,112,0.18)'
+const BORDER = 'rgba(0,255,136,0.08)'
+const BORDER_STRONG = 'rgba(0,255,136,0.18)'
 const TEXT = '#F5F7F6'
 const TEXT_DIM = '#8C948F'
 
@@ -131,12 +131,14 @@ export default function App() {
   const [indiaGeo, setIndiaGeo] = useState<{ countryPath: string; states: { name: string; path: string }[]; project: (lon: number, lat: number) => [number, number] } | null>(null);
   const [tooltip, setTooltip] = useState<{ name: string; x: number; y: number } | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  const [page, setPage] = useState<'home'>('home');
+  const [page, setPage] = useState<'home' | 'find-stations' | 'privacy-policy' | 'terms-conditions' | 'refund-policy' | 'about-us' | 'blog'>('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [connFilter, setConnFilter] = useState('Any');
   const [minPower, setMinPower] = useState(0);
   const [selectedStationId, setSelectedStationId] = useState('WB-410');
+  const [selectedClusterId, setSelectedClusterId] = useState<string | null>(null);
   const [activeService, setActiveService] = useState(0);
+  const [showContactForm, setShowContactForm] = useState(false);
 
   const filteredStations = STATIONS.filter(s => {
     const matchesQuery = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -149,24 +151,88 @@ export default function App() {
 
   const selectedStation = STATIONS.find(s => s.id === selectedStationId) || STATIONS[0];
 
+  const clusteredStations = useMemo(() => {
+    const groups: Record<string, typeof filteredStations> = {};
+    filteredStations.forEach(s => {
+      if (!groups[s.state]) groups[s.state] = [];
+      groups[s.state].push(s);
+    });
+    return Object.entries(groups).map(([state, stations]) => ({
+      state,
+      stations,
+      count: stations.length,
+      lon: stations[0].lon,
+      lat: stations[0].lat,
+      id: `cluster-${state}`,
+      totalKw: stations.reduce((acc, curr) => acc + curr.kw, 0)
+    }));
+  }, [filteredStations]);
+
   const focusedState = indiaGeo?.states.find(s =>
     searchQuery.length > 2 && s.name.toLowerCase().includes(searchQuery.toLowerCase())
   )?.name || null;
+
+  const selectedCluster = clusteredStations.find(c => c.id === selectedClusterId);
+
+  // PREMIUM CLUSTER POPUP
+  const ClusterPopup = ({ cluster, onClose, onPick }: { cluster: any, onClose: () => void, onPick: (s: any) => void }) => (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+      style={{
+        position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+        width: 380, background: '#0B0F0D', border: `1px solid ${ACCENT}`, borderRadius: 12,
+        padding: 32, zIndex: 100, pointerEvents: 'auto', boxShadow: `0 24px 64px rgba(0,0,0,0.8), 0 0 24px ${ACCENT}20`
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+        <div>
+          <div style={{ color: ACCENT, fontSize: '0.65rem', fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>{cluster.state} · CLUSTER</div>
+          <h3 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff', margin: 0, letterSpacing: -0.5 }}>{cluster.count} stations in this area</h3>
+        </div>
+        <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', cursor: 'pointer', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 32, marginBottom: 24, paddingBottom: 24, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 700, color: ACCENT }}>{cluster.totalKw}<span style={{ fontSize: '0.75rem', fontWeight: 500, color: TEXT_DIM, marginLeft: 4 }}>kW total</span></div>
+        </div>
+        <div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fff' }}>{Math.round(cluster.totalKw / cluster.count)}<span style={{ fontSize: '0.75rem', fontWeight: 500, color: TEXT_DIM, marginLeft: 4 }}>kW avg</span></div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 240, overflowY: 'auto' }} className="custom-scrollbar">
+        {cluster.stations.map((s: any) => (
+          <div key={s.id} onClick={() => onPick(s)} style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer',
+            padding: '12px 16px', borderRadius: 8, transition: 'all 0.2s'
+          }} onMouseEnter={(e: any) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'} onMouseLeave={(e: any) => e.currentTarget.style.background = 'transparent'}>
+            <div>
+              <div style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 600 }}>{s.name}</div>
+              <div style={{ color: TEXT_DIM, fontSize: '0.7rem' }}>{s.id}</div>
+            </div>
+            <div style={{ color: ACCENT, fontWeight: 700, fontSize: '0.9rem' }}>{s.kw} kW</div>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
 
   // Map Component for reuse
   const IndiaMap = ({ highlighted, onHover }: { highlighted?: string | null, onHover?: (name: string | null) => void }) => {
     if (!indiaGeo) return <div style={{ color: TEXT_DIM, fontSize: '0.8rem' }}>Initializing GeoData...</div>;
     return (
       <svg viewBox="0 0 200 200" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
-        <path d={indiaGeo.countryPath} fill="rgba(159,232,112,0.03)" stroke={BORDER} strokeWidth="0.5" fillRule="evenodd" />
+        <path d={indiaGeo.countryPath} fill="rgba(0,255,136,0.02)" stroke={ACCENT} strokeWidth="0.4" fillRule="evenodd" style={{ opacity: 0.3 }} />
         {indiaGeo.states.map((s: any, i: number) => (
           <motion.path
             key={i}
             d={s.path}
             fill={highlighted === s.name ? `${ACCENT}15` : 'transparent'}
-            stroke={highlighted === s.name ? ACCENT : BORDER}
-            strokeWidth={highlighted === s.name ? 0.8 : 0.3}
-            whileHover={{ fill: `${ACCENT}22`, stroke: ACCENT }}
+            stroke={highlighted === s.name ? ACCENT : ACCENT}
+            strokeWidth={highlighted === s.name ? 0.6 : 0.2}
+            strokeOpacity={highlighted === s.name ? 0.8 : 0.15}
+            whileHover={{ fill: `${ACCENT}22`, strokeOpacity: 0.6 }}
             transition={{ duration: 0.2 }}
             style={{ cursor: 'pointer' }}
             onMouseEnter={() => onHover && onHover(s.name)}
@@ -174,22 +240,37 @@ export default function App() {
             onClick={() => setSearchQuery(s.name)}
           />
         ))}
-        {filteredStations.map((s, i) => {
-          const [x, y] = indiaGeo.project(s.lon, s.lat);
-          const isSelected = s.id === selectedStationId;
+
+        {clusteredStations.map((c, i) => {
+          if (!indiaGeo || !indiaGeo.project) return null;
+          const [x, y] = indiaGeo.project(c.lon, c.lat);
+          if (isNaN(x) || isNaN(y)) return null;
+
+          const isClusterSelected = c.id === selectedClusterId;
+          const isSingle = c.count === 1;
+
           return (
             <motion.g
-              key={s.id}
+              key={c.id}
               initial={{ scale: 0 }} animate={{ scale: 1 }}
-              onClick={(e) => { e.stopPropagation(); setSelectedStationId(s.id); }}
+              onClick={(e) => { e.stopPropagation(); isSingle ? setSelectedStationId(c.stations[0].id) : setSelectedClusterId(c.id); }}
               style={{ cursor: 'pointer' }}
             >
-              <circle cx={x} cy={y} r={isSelected ? 3 : 1.5} fill={isSelected ? ACCENT : '#fff'} opacity={isSelected ? 1 : 0.6} />
-              {isSelected && (
-                <circle cx={x} cy={y} r={6} stroke={ACCENT} strokeWidth="0.5" fill="none">
-                  <animate attributeName="r" from="3" to="8" dur="1.5s" repeatCount="indefinite" />
-                  <animate attributeName="opacity" from="1" to="0" dur="1.5s" repeatCount="indefinite" />
-                </circle>
+              {/* CLUSTER MARKER */}
+              {!isSingle ? (
+                <>
+                  <circle cx={x} cy={y} r={6} fill="#0B0F0D" stroke={ACCENT} strokeWidth="1" />
+                  <circle cx={x} cy={y} r={8} stroke={ACCENT} strokeWidth="0.5" fill="none" opacity="0.3">
+                    <animate attributeName="r" from="6" to="12" dur="2s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" from="0.3" to="0" dur="2s" repeatCount="indefinite" />
+                  </circle>
+                  <text x={x} y={y} dy="2.2" textAnchor="middle" fill="#fff" fontSize="5" fontWeight="700">{c.count}</text>
+                </>
+              ) : (
+                <>
+                  <circle cx={x} cy={y} r={4} fill="#0B0F0D" stroke={ACCENT} strokeWidth="0.8" />
+                  <path d={`M ${x} ${y - 2.5} L ${x - 1.5} ${y + 0.5} L ${x} ${y + 0.5} L ${x} ${y + 2.5} L ${x + 1.5} ${y - 0.5} L ${x} ${y - 0.5} Z`} fill={ACCENT} />
+                </>
               )}
             </motion.g>
           );
@@ -204,6 +285,21 @@ export default function App() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (target === '#top' || target === 'home') {
       setPage('home');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (target === 'privacy-policy') {
+      setPage('privacy-policy');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (target === 'terms-conditions') {
+      setPage('terms-conditions');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (target === 'refund-policy') {
+      setPage('refund-policy');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (target === 'about-us') {
+      setPage('about-us');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (target === 'blog') {
+      setPage('blog');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       setPage('home');
@@ -343,6 +439,8 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
         h1, h2, h3, h4 { font-family: 'Inter', sans-serif; font-weight: 600; letter-spacing: -0.022em; color: ${TEXT}; }
@@ -354,7 +452,7 @@ export default function App() {
         .circle { border-radius: 9999px; }
         .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: ${ACCENT_SOFT}; font-weight: 500; }
 
-        .btn-accent { background: ${ACCENT}; color: #0B0F0D; border: none; padding: 14px 26px; font-weight: 600; font-size: 0.88rem; letter-spacing: 0; cursor: pointer; transition: 220ms cubic-bezier(0.22, 1, 0.36, 1); border-radius: 8px; display: inline-flex; align-items: center; gap: 10px; font-family: 'Inter', sans-serif; }
+        .btn-accent { background: ${ACCENT}; color: #0B0F0D; border: none; padding: 14px 26px; font-weight: 600; font-size: 0.88rem; letter-spacing: 0; cursor: pointer; transition: 220ms cubic-bezier(0.22, 1, 0.36, 1); border-radius: 999px; display: inline-flex; align-items: center; gap: 10px; font-family: 'Inter', sans-serif; }
         .btn-accent:hover { background: #B5F08A; transform: translateY(-1px); }
         .btn-ghost { background: transparent; color: ${TEXT}; border: 1px solid rgba(245,247,246,0.12); padding: 14px 26px; font-weight: 500; font-size: 0.88rem; cursor: pointer; transition: 220ms cubic-bezier(0.22, 1, 0.36, 1); border-radius: 8px; font-family: 'Inter', sans-serif; }
         .btn-ghost:hover { background: rgba(245,247,246,0.04); border-color: rgba(245,247,246,0.22); }
@@ -409,7 +507,9 @@ export default function App() {
            ====================================================== */
         .loader-section { background: ${BG}; color: ${TEXT}; }
         .loader-stage { width: 460px; height: 460px; position: relative; display: grid; place-items: center; }
-        .loader-stage svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+        .finder-stage { width: 100%; height: 100%; position: relative; display: grid; place-items: center; background: radial-gradient(circle at 50% 50%, ${ACCENT}08, transparent 70%); }
+        .loader-grid { position: absolute; inset: 0; background-image: linear-gradient(${ACCENT}08 1px, transparent 1px), linear-gradient(90deg, ${ACCENT}08 1px, transparent 1px); background-size: 32px 32px; pointer-events: none; mask-image: radial-gradient(circle at 50% 50%, black 40%, transparent 90%); -webkit-mask-image: radial-gradient(circle at 50% 50%, black 40%, transparent 90%); }
+        .loader-stage svg, .finder-stage svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; z-index: 2; }
 
         .loader-hud-overlay { position: absolute; inset: -36px; pointer-events: none; z-index: 10; font-family: 'JetBrains Mono', monospace; }
         .loader-hud-corner { position: absolute; width: 18px; height: 18px; border: 1px solid ${ACCENT_SOFT}; opacity: 0.45; }
@@ -474,28 +574,149 @@ export default function App() {
         </div>
         <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 32 }}>
           {[
-            { label: 'Why TRIO', target: '#platform' },
-            { label: 'Network', target: '#network' },
             { label: 'Find stations', target: 'find-stations' },
-            { label: 'Plans', target: '#plans' },
+            { label: 'About us', target: 'about-us' },
+            { label: 'Blog', target: 'blog' },
           ].map(l => (
-            <a key={l.label} href={l.target.startsWith('#') ? l.target : '#'} onClick={(e) => { e.preventDefault(); navigate(l.target); }} style={{ color: TEXT_DIM, textDecoration: 'none', fontSize: '0.88rem', fontWeight: 500, transition: 'color 200ms', cursor: 'pointer' }} onMouseEnter={(e: any) => e.target.style.color = TEXT} onMouseLeave={(e: any) => e.target.style.color = TEXT_DIM}>{l.label}</a>
+            <a key={l.label} href="#" onClick={(e) => { e.preventDefault(); navigate(l.target); }} style={{ color: TEXT_DIM, textDecoration: 'none', fontSize: '0.88rem', fontWeight: 500, transition: 'color 200ms', cursor: 'pointer' }} onMouseEnter={(e: any) => e.target.style.color = TEXT} onMouseLeave={(e: any) => e.target.style.color = TEXT_DIM}>{l.label}</a>
           ))}
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center' }}>
-          <a href="#" style={{ color: TEXT_DIM, textDecoration: 'none', fontSize: '0.88rem', fontWeight: 500 }}>Sign in</a>
-          <button className="btn-accent" style={{ padding: '10px 18px', fontSize: '0.82rem' }}>Get started</button>
+          <button
+            className="btn-accent"
+            onClick={() => setShowContactForm(true)}
+            style={{ padding: '12px 28px', fontSize: '0.88rem', fontWeight: 700 }}
+          >
+            Contact Sales
+          </button>
         </div>
       </nav>
+
+      <AnimatePresence>
+        {showContactForm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 2000,
+              background: 'rgba(5, 7, 6, 0.96)',
+              backdropFilter: 'blur(32px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 40
+            }}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setShowContactForm(false)}
+              style={{ position: 'absolute', top: 40, right: 40, background: 'none', border: 'none', color: TEXT_DIM, cursor: 'pointer', transition: 'color 0.2s' }}
+              onMouseEnter={(e: any) => e.target.style.color = TEXT}
+              onMouseLeave={(e: any) => e.target.style.color = TEXT_DIM}
+            >
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              style={{ width: '100%', maxWidth: 1000, display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: 60 }}
+            >
+              {/* Left Column: Info */}
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'rgba(0, 255, 136, 0.08)', border: '1px solid rgba(0, 255, 136, 0.2)', borderRadius: 99, width: 'fit-content', marginBottom: 32 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                  <span style={{ fontSize: '0.65rem', fontWeight: 700, color: ACCENT, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Talk to us</span>
+                </div>
+
+                <h2 style={{ fontSize: '3rem', fontWeight: 800, color: '#fff', lineHeight: 1.1, marginBottom: 20, letterSpacing: '-0.04em' }}>
+                  Let's electrify <br />
+                  <span style={{ color: ACCENT }}>your fleet.</span>
+                </h2>
+
+                <p style={{ fontSize: '1rem', color: TEXT_DIM, lineHeight: 1.6, marginBottom: 40, maxWidth: 380 }}>
+                  Whether you're scaling rentals, leasing for a growing business, or moving employees daily — share what you need and our team will plan the route forward.
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                  {[
+                    { icon: 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6', label: 'EMAIL', value: 'hello@trio.ev' },
+                    { icon: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z', label: 'WHATSAPP', value: '+91 98xxx xxxxx' },
+                    { icon: 'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', label: 'HQ', value: 'Bengaluru, India' }
+                  ].map(item => (
+                    <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ACCENT }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={item.icon}></path></svg>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: TEXT_DIM, letterSpacing: '0.1em' }}>{item.label}</div>
+                        <div style={{ fontSize: '1rem', color: TEXT, fontWeight: 500 }}>{item.value}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right Column: Form */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 24, padding: 32, position: 'relative' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: TEXT_DIM, letterSpacing: '0.05em' }}>NAME</label>
+                    <input placeholder="Your full name" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '14px 18px', color: TEXT, outline: 'none', fontSize: '0.9rem' }} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: TEXT_DIM, letterSpacing: '0.05em' }}>EMAIL</label>
+                    <input placeholder="you@company.com" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '14px 18px', color: TEXT, outline: 'none', fontSize: '0.9rem' }} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
+                  <label style={{ fontSize: '0.7rem', fontWeight: 700, color: TEXT_DIM, letterSpacing: '0.05em' }}>PHONE <span style={{ opacity: 0.5, fontWeight: 400 }}>optional</span></label>
+                  <input placeholder="+91 98xxx xxxxx" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '14px 18px', color: TEXT, outline: 'none', fontSize: '0.9rem' }} />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
+                  <label style={{ fontSize: '0.7rem', fontWeight: 700, color: TEXT_DIM, letterSpacing: '0.05em' }}>INQUIRY TYPE</label>
+                  <select style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '14px 18px', color: TEXT, outline: 'none', fontSize: '0.9rem', cursor: 'pointer', appearance: 'none' }}>
+                    <option style={{ background: CARD, color: TEXT }}>Select type</option>
+                    <option style={{ background: CARD, color: TEXT }}>Fleet Charging Partnership</option>
+                    <option style={{ background: CARD, color: TEXT }}>Station Installation</option>
+                    <option style={{ background: CARD, color: TEXT }}>Individual Charging Plan</option>
+                    <option style={{ background: CARD, color: TEXT }}>Other</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 32 }}>
+                  <label style={{ fontSize: '0.7rem', fontWeight: 700, color: TEXT_DIM, letterSpacing: '0.05em' }}>MESSAGE</label>
+                  <textarea placeholder="A few details about your needs..." style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '14px 18px', color: TEXT, outline: 'none', fontSize: '0.9rem', minHeight: 120, resize: 'none' }} />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontSize: '0.75rem', color: TEXT_DIM }}>We respond within one business day. No spam, ever.</div>
+                  <button className="btn-accent" style={{ padding: '14px 28px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    Send inquiry
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {page === 'home' && (
         <>
           {/* HERO — refined, premium */}
-          <section style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', paddingTop: 80, background: BG }}>
+          <section style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', paddingTop: 72, background: BG }}>
             {/* Subtle ambient gradient */}
             <div style={{ position: 'absolute', right: '-10%', top: '15%', width: 760, height: 760, background: `radial-gradient(circle, ${ACCENT_SOFT}22, transparent 60%)`, pointerEvents: 'none', borderRadius: '50%' }} />
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.05fr 1fr', gap: 80, padding: '80px 88px 0', alignItems: 'center', minHeight: 'calc(100vh - 200px)', position: 'relative', zIndex: 5, maxWidth: 1440, margin: '0 auto' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.05fr 1fr', gap: 80, padding: '24px 88px 0', alignItems: 'center', minHeight: 'calc(100vh - 120px)', position: 'relative', zIndex: 5, maxWidth: 1440, margin: '0 auto' }}>
 
               {/* LEFT COLUMN */}
               <div>
@@ -507,7 +728,7 @@ export default function App() {
                   </div>
 
                   {/* TITLE */}
-                  <h1 style={{ fontSize: 'clamp(2.8rem, 5.6vw, 5.6rem)', lineHeight: 1.02, marginBottom: 28, fontWeight: 600 }}>
+                  <h1 style={{ fontSize: 'clamp(2.4rem, 4.8vw, 4.8rem)', lineHeight: 1.02, marginBottom: 28, fontWeight: 600 }}>
                     <motion.span initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} style={{ display: 'block' }}>
                       EV power,
                     </motion.span>
@@ -588,10 +809,10 @@ export default function App() {
           </section>
 
           {/* OUR SERVICES */}
-          <section id="services" style={{ padding: '140px 88px 120px', position: 'relative', overflow: 'hidden', background: '#0a0a0a' }}>
+          <section id="services" style={{ padding: '40px 88px 60px', position: 'relative', overflow: 'hidden', background: '#0a0a0a' }}>
             <div style={{ maxWidth: 1440, margin: '0 auto', position: 'relative', zIndex: 5 }}>
               {/* Header */}
-              <div style={{ textAlign: 'center', marginBottom: 80 }}>
+              <div style={{ textAlign: 'center', marginBottom: 40 }}>
                 <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.2em', color: '#e0e0e0', marginBottom: 16, textTransform: 'uppercase' }}>
                   EXPLORE OUR SERVICES
                 </div>
@@ -604,7 +825,7 @@ export default function App() {
               </div>
 
               {/* Main Content Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 80, alignItems: 'center', marginTop: 40 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 80, alignItems: 'center', marginTop: 20 }}>
                 {/* Left: Image & Description */}
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <div style={{ position: 'relative', width: '100%', height: '400px', marginBottom: 40 }}>
@@ -667,707 +888,438 @@ export default function App() {
           </section>
 
           {/* INDIA COVERAGE — operational dashboard */}
-          <section id="network" className="loader-section" style={{ position: 'relative', padding: '140px 88px 140px', borderTop: `1px solid ${BORDER}`, overflow: 'hidden' }}>
-            <div style={{ maxWidth: 1440, margin: '0 auto 56px' }}>
-              <motion.div initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 64, alignItems: 'end' }}>
-                <div>
-                  <div className="eyebrow" style={{ marginBottom: 14 }}>India coverage · Real-time</div>
-                  <h2 style={{ fontSize: 'clamp(2rem, 3.6vw, 3.4rem)', fontWeight: 600, marginBottom: 14, letterSpacing: -0.028 }}>
-                    One network. <span style={{ color: TEXT_DIM, fontWeight: 400 }}>Every state.</span>
-                  </h2>
-                  <p style={{ color: TEXT_DIM, fontSize: '1.05rem', maxWidth: 540, lineHeight: 1.65, fontWeight: 400 }}>
-                    National-scale charging intelligence — every metro online, every kilowatt accounted for.
-                  </p>
+          {/* INDIA COVERAGE OPERATIONAL DASHBOARD (Integrated High-Fidelity Prototype) */}
+          <section id="network" className="loader-section" style={{ padding: '60px 0 80px', background: '#000', overflow: 'hidden' }}>
+            <div style={{ maxWidth: 1250, margin: '0 auto', padding: '0 40px' }}>
+              <div style={{ marginBottom: 40, textAlign: 'center' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, padding: '6px 16px', background: 'rgba(0, 255, 136, 0.08)', border: '1px solid rgba(0, 255, 136, 0.2)', borderRadius: 99, marginBottom: 16 }}>
+                  <div style={{ width: 6, height: 6, background: '#00FF88', borderRadius: '50%', boxShadow: '0 0 10px #00FF88' }}></div>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#00FF88', letterSpacing: '0.12em', textTransform: 'uppercase' }}>System Status: Operational</span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0, border: `1px solid ${BORDER}`, borderRadius: 12, background: CARD }}>
-                  {[
-                    { v: '1,847', l: 'Stations' },
-                    { v: '142M', l: 'kWh / yr' },
-                    { v: '28', l: 'States' },
-                  ].map((s, i) => (
-                    <div key={i} style={{ padding: '16px 18px', borderRight: i < 2 ? `1px solid ${BORDER}` : 'none' }}>
-                      <div style={{ fontSize: '0.7rem', color: TEXT_DIM, fontWeight: 500, marginBottom: 4 }}>{s.l}</div>
-                      <div style={{ fontSize: '1.4rem', fontWeight: 600, color: TEXT, letterSpacing: -0.02, fontVariantNumeric: 'tabular-nums' }}>{s.v}</div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            </div>
-
-            {/* DASHBOARD GRID */}
-            <div style={{ maxWidth: 1440, margin: '0 auto', display: 'grid', gridTemplateColumns: '1.15fr 1fr', gap: 24 }}>
-
-              {/* LEFT — Map panel */}
-              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, position: 'relative' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                  <div>
-                    <div className="eyebrow" style={{ marginBottom: 6 }}>Coverage map</div>
-                    <div style={{ color: TEXT, fontWeight: 500, fontSize: '0.92rem' }}>9 metros · all online</div>
-                  </div>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '0.72rem', color: ACCENT_SOFT, fontWeight: 500 }}>
-                    <span className="circle pulse-dot" style={{ width: 6, height: 6, background: ACCENT, color: ACCENT }} />
-                    Sync OK
-                  </div>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 0' }}>
-                  <div className="loader-stage" ref={stageRef}>
-
-                    {/* HUD overlay */}
-                    <div className="loader-hud-overlay">
-                      <div className="loader-hud-corner loader-corner-tl" />
-                      <div className="loader-hud-corner loader-corner-tr" />
-                      <div className="loader-hud-corner loader-corner-bl" />
-                      <div className="loader-hud-corner loader-corner-br" />
-
-                      <div className="loader-hud-labels">
-                        <div className="loader-hud-top-left">
-                          <div>{'// COVERAGE_MAP_v4.7 / IN'}</div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ color: '#fff', fontSize: 16, lineHeight: 0 }}>•</span>
-                            9 METROS VISIBLE
-                          </div>
-                        </div>
-
-                        <div className="loader-hud-bottom-right">
-                          <div>GEO . BHARAT</div>
-                          <div>SYNC . <span className="loader-accent-white">OK</span></div>
-                        </div>
-
-                        <div className="loader-hud-brand-text">
-                          <div className="loader-hud-brand-title">INDIA_COVERAGE / REAL-TIME</div>
-                          <div>ONE NETWORK.</div>
-                          <div>EVERY STATE.</div>
-                        </div>
-                      </div>
-
-                      <div className="loader-hud-scanline" />
-                    </div>
-
-                    {/* Bolt behind map */}
-                    <svg viewBox="0 0 200 200" className="loader-bolt" aria-hidden="true">
-                      <path d="M 108 70 L 86 104 L 100 104 L 92 132 L 116 96 L 102 96 Z" />
-                    </svg>
-
-                    {/* Charging progress ring + EV car */}
-                    <svg viewBox="0 0 200 200" className="loader-ring-wrap" aria-hidden="true">
-                      <circle className="loader-ring-track" cx="100" cy="100" r="92" />
-                      <g className="loader-ring-ticks">
-                        {Array.from({ length: 12 }).map((_, i) => {
-                          const a = (i / 12) * Math.PI * 2;
-                          const x1 = 100 + Math.cos(a) * 96;
-                          const y1 = 100 + Math.sin(a) * 96;
-                          const x2 = 100 + Math.cos(a) * 100;
-                          const y2 = 100 + Math.sin(a) * 100;
-                          return <line key={i} x1={x1.toFixed(2)} y1={y1.toFixed(2)} x2={x2.toFixed(2)} y2={y2.toFixed(2)} />;
-                        })}
-                      </g>
-                      <circle className="loader-ring-fill" cx="100" cy="100" r="92" />
-
-                      <g>
-                        <rect className="loader-car-body" x="-9" y="-2" width="18" height="4" rx="1.6" />
-                        <path className="loader-car-body" d="M -5 -2 L -3 -4.8 L 4 -4.8 L 6 -2 Z" />
-                        <path className="loader-car-glass" d="M -3.8 -2.2 L -2.2 -4 L 3.2 -4 L 4.8 -2.2 Z" />
-                        <circle className="loader-car-wheel" cx="-5.5" cy="2.2" r="1.5" />
-                        <circle className="loader-car-wheel" cx="5.5" cy="2.2" r="1.5" />
-                        <rect className="loader-car-light" x="8.4" y="-1.2" width="1.2" height="1.6" rx="0.3" />
-                        <animateMotion dur="6s" repeatCount="indefinite" rotate="auto">
-                          <mpath href="#loaderCarPath" />
-                        </animateMotion>
-                      </g>
-
-                      <path id="loaderCarPath" d="M 8 100 A 92 92 0 0 1 192 100 A 92 92 0 0 1 8 100" fill="none" stroke="none" />
-                    </svg>
-
-                    {/* Map: country fill + states with hover */}
-                    <svg viewBox="0 0 200 200" className="loader-map">
-                      {indiaGeo && (
-                        <>
-                          <path d={indiaGeo.countryPath} className="loader-country" fillRule="evenodd" />
-                          {indiaGeo.states.map((s, i) => (
-                            <path
-                              key={i}
-                              d={s.path}
-                              className="loader-state"
-                              onMouseEnter={() => setTooltip({ name: s.name, x: 0, y: 0 })}
-                              onMouseMove={(e) => {
-                                if (!stageRef.current) return;
-                                const rect = stageRef.current.getBoundingClientRect();
-                                setTooltip({ name: s.name, x: e.clientX - rect.left, y: e.clientY - rect.top });
-                              }}
-                              onMouseLeave={() => setTooltip(null)}
-                            />
-                          ))}
-                        </>
-                      )}
-                    </svg>
-
-                    {/* Stations */}
-                    <svg viewBox="0 0 200 200" className="loader-stations" aria-hidden="true">
-                      {indiaGeo && [
-                        { name: 'Delhi', lon: 77.10, lat: 28.70 },
-                        { name: 'Mumbai', lon: 72.87, lat: 19.07 },
-                        { name: 'Bengaluru', lon: 77.59, lat: 12.97 },
-                        { name: 'Chennai', lon: 80.27, lat: 13.08 },
-                        { name: 'Kolkata', lon: 88.36, lat: 22.57 },
-                        { name: 'Hyderabad', lon: 78.49, lat: 17.39 },
-                        { name: 'Pune', lon: 73.85, lat: 18.52 },
-                        { name: 'Ahmedabad', lon: 72.57, lat: 23.02 },
-                        { name: 'Jaipur', lon: 75.79, lat: 26.92 },
-                      ].map((c, i) => {
-                        const [x, y] = indiaGeo.project(c.lon, c.lat);
-                        const xs = x.toFixed(2);
-                        const ys = y.toFixed(2);
-                        const delay = `${((i % 7) * 0.32).toFixed(2)}s`;
-                        return (
-                          <g key={c.name}>
-                            <circle cx={xs} cy={ys} r="3.5" className="loader-station-halo" />
-                            <circle
-                              cx={xs} cy={ys} r="2.5" className="loader-station-pulse"
-                              style={{ ['--cx' as any]: `${xs}px`, ['--cy' as any]: `${ys}px`, ['--delay' as any]: delay }}
-                            />
-                            <circle
-                              cx={xs} cy={ys} r="1.6" className="loader-station-core"
-                              style={{ ['--delay' as any]: delay }}
-                            />
-                          </g>
-                        );
-                      })}
-                    </svg>
-
-                    {/* Tooltip */}
-                    {tooltip && (
-                      <div className="loader-tooltip show" style={{ left: tooltip.x, top: tooltip.y }}>
-                        <span className="accent">⚡</span> {tooltip.name}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <h2 style={{ fontSize: 'clamp(2rem, 3vw, 3rem)', fontWeight: 600, marginBottom: 12, letterSpacing: '-0.03em', color: '#fff' }}>
+                  ENERGY <span style={{ color: '#00FF88' }}>SYNAPSE</span>
+                </h2>
+                <p style={{ fontSize: '1.05rem', color: 'rgba(255,255,255,0.6)', maxWidth: 540, margin: '0 auto' }}>
+                  India Coverage Operational Dashboard — Real-time infrastructure telemetry and network deployment metrics.
+                </p>
               </div>
 
-              {/* RIGHT — State leaderboard */}
-              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, display: 'flex', flexDirection: 'column' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22 }}>
-                  <div>
-                    <div className="eyebrow" style={{ marginBottom: 6 }}>Top states</div>
-                    <div style={{ color: TEXT, fontWeight: 500, fontSize: '0.92rem' }}>Stations · live ranking</div>
-                  </div>
-                  <div style={{ fontSize: '0.7rem', color: TEXT_DIM, padding: '4px 10px', border: `1px solid ${BORDER}`, borderRadius: 999 }}>Top 8</div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, flex: 1 }}>
-                  {[
-                    { name: 'Maharashtra', count: 287, pct: 100, code: 'MH' },
-                    { name: 'Delhi NCR', count: 247, pct: 86, code: 'DL' },
-                    { name: 'Karnataka', count: 224, pct: 78, code: 'KA' },
-                    { name: 'Tamil Nadu', count: 198, pct: 69, code: 'TN' },
-                    { name: 'Gujarat', count: 186, pct: 65, code: 'GJ' },
-                    { name: 'Telangana', count: 142, pct: 49, code: 'TG' },
-                    { name: 'Uttar Pradesh', count: 134, pct: 47, code: 'UP' },
-                    { name: 'Rajasthan', count: 98, pct: 34, code: 'RJ' },
-                  ].map((s, i) => (
-                    <motion.div key={s.name}
-                      initial={{ opacity: 0, x: -12 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.04 }}
-                      style={{ display: 'grid', gridTemplateColumns: '32px 1fr 56px', gap: 14, alignItems: 'center' }}
-                    >
-                      <span style={{ fontSize: '0.7rem', color: TEXT_DIM, fontWeight: 500, fontFamily: 'JetBrains Mono, monospace' }}>{s.code}</span>
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                          <span style={{ fontSize: '0.86rem', color: TEXT, fontWeight: 500, letterSpacing: -0.01 }}>{s.name}</span>
-                        </div>
-                        <div style={{ height: 4, background: SURFACE, borderRadius: 4, overflow: 'hidden' }}>
-                          <motion.div
-                            initial={{ width: 0 }} whileInView={{ width: `${s.pct}%` }} viewport={{ once: true }}
-                            transition={{ duration: 0.9, delay: 0.1 + i * 0.04, ease: [0.22, 1, 0.36, 1] }}
-                            style={{ height: '100%', background: i < 3 ? ACCENT : ACCENT_SOFT, borderRadius: 4 }}
-                          />
-                        </div>
-                      </div>
-                      <span style={{ fontSize: '0.92rem', color: TEXT, fontWeight: 600, textAlign: 'right', fontVariantNumeric: 'tabular-nums', letterSpacing: -0.01 }}>{s.count}</span>
-                    </motion.div>
-                  ))}
-                </div>
-
-                {/* Bottom — instantaneous metrics */}
-                <div style={{ marginTop: 28, paddingTop: 22, borderTop: `1px solid ${BORDER}`, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-                  <div>
-                    <div style={{ fontSize: '0.68rem', color: TEXT_DIM, fontWeight: 500, marginBottom: 4 }}>Active sessions</div>
-                    <div style={{ fontSize: '1.3rem', fontWeight: 600, color: TEXT, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.02 }}>3,412</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.68rem', color: TEXT_DIM, fontWeight: 500, marginBottom: 4 }}>Power flow</div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                      <span style={{ fontSize: '1.3rem', fontWeight: 600, color: TEXT, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.02 }}>1.24</span>
-                      <span style={{ fontSize: '0.72rem', color: ACCENT_SOFT, fontWeight: 500 }}>GW</span>
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.68rem', color: TEXT_DIM, fontWeight: 500, marginBottom: 4 }}>Avg session</div>
-                    <div style={{ fontSize: '1.3rem', fontWeight: 600, color: TEXT, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.02 }}>22:14</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* BOTTOM — National pulse chart */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              style={{ maxWidth: 1440, margin: '24px auto 0', background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24 }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20, flexWrap: 'wrap', gap: 16 }}>
-                <div>
-                  <div className="eyebrow" style={{ marginBottom: 6 }}>National pulse</div>
-                  <div style={{ color: TEXT, fontWeight: 500, fontSize: '0.92rem' }}>Power delivered · last 24 hours</div>
-                </div>
-                <div style={{ display: 'flex', gap: 28, fontSize: '0.78rem', color: TEXT_DIM }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="circle" style={{ display: 'inline-block', width: 8, height: 8, background: ACCENT }} />
-                    <span>Now</span>
-                    <strong style={{ color: TEXT, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>1.24 GW</strong>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="circle" style={{ display: 'inline-block', width: 8, height: 8, background: ACCENT_SOFT, opacity: 0.5 }} />
-                    <span>24 h avg</span>
-                    <strong style={{ color: TEXT, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>0.82 GW</strong>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ color: TEXT_DIM }}>Peak</span>
-                    <strong style={{ color: TEXT, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>1.42 GW · 19:00</strong>
-                  </div>
-                </div>
-              </div>
-
-              {(() => {
-                const pulse = [38, 35, 32, 30, 28, 28, 32, 42, 58, 72, 82, 86, 88, 82, 78, 80, 88, 95, 99, 96, 88, 75, 60, 48];
-                const w = 1200, h = 160;
-                const stepX = w / (pulse.length - 1);
-                const linePath = pulse.map((p, i) => `${i === 0 ? 'M' : 'L'} ${(i * stepX).toFixed(2)} ${(h - (p / 100) * h).toFixed(2)}`).join(' ');
-                const areaPath = `${linePath} L ${w} ${h} L 0 ${h} Z`;
-                const nowIdx = 18;
-                const nowX = nowIdx * stepX;
-                const nowY = h - (pulse[nowIdx] / 100) * h;
-                return (
-                  <>
-                    <svg viewBox={`0 0 ${w} ${h + 24}`} preserveAspectRatio="none" style={{ width: '100%', height: 200, display: 'block' }}>
-                      <defs>
-                        <linearGradient id="pulseFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={ACCENT} stopOpacity="0.18" />
-                          <stop offset="100%" stopColor={ACCENT} stopOpacity="0" />
-                        </linearGradient>
-                      </defs>
-                      {/* Horizontal grid lines */}
-                      {[0, 0.25, 0.5, 0.75, 1].map((p, i) => (
-                        <line key={i} x1="0" y1={h * p} x2={w} y2={h * p} stroke={BORDER} strokeWidth="1" />
-                      ))}
-                      <path d={areaPath} fill="url(#pulseFill)" />
-                      <path d={linePath} fill="none" stroke={ACCENT_SOFT} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      {/* Now marker */}
-                      <line x1={nowX} y1="0" x2={nowX} y2={h} stroke={ACCENT} strokeWidth="1" strokeDasharray="3 4" opacity="0.6" />
-                      <circle cx={nowX} cy={nowY} r="5" fill={ACCENT} />
-                      <circle cx={nowX} cy={nowY} r="9" fill="none" stroke={ACCENT} strokeWidth="1" opacity="0.4">
-                        <animate attributeName="r" values="6;14;6" dur="2.4s" repeatCount="indefinite" />
-                        <animate attributeName="opacity" values="0.6;0;0.6" dur="2.4s" repeatCount="indefinite" />
-                      </circle>
-                    </svg>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: '0.7rem', color: TEXT_DIM, fontFamily: 'JetBrains Mono, monospace' }}>
-                      {['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'].map(t => <span key={t}>{t}</span>)}
-                    </div>
-                  </>
-                );
-              })()}
-            </motion.div>
-          </section>
-
-
-          {/* NETWORK (Redesigned Featured Stations) */}
-          <section id="network" style={{ padding: '140px 88px 120px', background: SURFACE, borderTop: `1px solid ${BORDER}` }}>
-            <div style={{ maxWidth: 1440, margin: '0 auto' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 64, alignItems: 'end', marginBottom: 64 }}>
-                <div>
-                  <div className="eyebrow" style={{ marginBottom: 14 }}>Global Network</div>
-                  <h2 style={{ fontSize: 'clamp(2rem, 3.6vw, 3.4rem)', fontWeight: 600, marginBottom: 14, letterSpacing: -0.028 }}>
-                    Charging hubs <span style={{ color: TEXT_DIM, fontWeight: 400 }}>across India.</span>
-                  </h2>
-                  <p style={{ color: TEXT_DIM, fontSize: '1.05rem', lineHeight: 1.65, maxWidth: 540 }}>
-                    From metro corridors to highway expressways — a curated selection of TRIO hubs ready for your next charge.
-                  </p>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                  <button onClick={() => navigate('find-stations')} className="btn-ghost" style={{ padding: '10px 18px', fontSize: '0.82rem' }}>Open Network Map →</button>
-                </div>
-              </div>
-
-              {/* Minimal sleek list of stations */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {[
-                  { name: 'TRIO Mumbai Central', loc: 'Bandra–Kurla Complex, Mumbai', kind: '350 kW DC + Type 2', status: 'Available', amenity: '24/7 · CCTV · Lounge', tint: ACCENT, statusKind: 'available' as const },
-                  { name: 'TRIO Delhi Solar Hub', loc: 'Connaught Place, New Delhi', kind: 'Solar Level 2 + DC', status: 'Available', amenity: '100% renewable energy', tint: ACCENT_SOFT, statusKind: 'available' as const },
-                  { name: 'TRIO Bengaluru Tech', loc: 'Whitefield Tech Park', kind: 'DC Fast 150 kW', status: 'Occupied', amenity: 'App + RFID access', tint: '#E5946B', statusKind: 'occupied' as const },
-                  { name: 'TRIO Hyderabad HITEC', loc: 'HITEC City, Hyderabad', kind: 'Level 2 + DC Combo', status: 'Available', amenity: '24/7 · CCTV · Restrooms', tint: ACCENT, statusKind: 'available' as const },
-                  { name: 'TRIO Chennai Marina', loc: 'OMR · Marina expressway', kind: 'Type 2 fast charge', status: 'Available', amenity: 'UPI · FASTag · App', tint: ACCENT_SOFT, statusKind: 'available' as const },
-                  { name: 'TRIO Pune Hinjewadi', loc: 'Hinjewadi IT Park, Pune', kind: 'Solar Level 2', status: 'Coming soon', amenity: 'Q1 2027 · Eco hub', tint: TEXT_DIM, statusKind: 'soon' as const },
-                ].map((s, i) => {
-                  const statusColor = s.statusKind === 'available' ? ACCENT : (s.statusKind === 'occupied' ? '#E5946B' : TEXT_DIM);
-                  return (
-                    <motion.div key={s.name}
-                      initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.6, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
-                      style={{
-                        background: 'rgba(255,255,255,0.015)', border: `1px solid rgba(255,255,255,0.03)`, borderRadius: 12, padding: '20px 24px',
-                        display: 'grid', gridTemplateColumns: '2fr 1.5fr 1.5fr 1fr auto', gap: 24, alignItems: 'center',
-                        transition: 'all 220ms ease', cursor: 'pointer'
-                      }}
-                      onMouseEnter={(e: any) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; }}
-                      onMouseLeave={(e: any) => { e.currentTarget.style.background = 'rgba(255,255,255,0.015)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.03)'; }}
-                    >
-                      <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, color: TEXT, margin: '0 0 4px 0' }}>{s.name}</h3>
-                        <div style={{ fontSize: '0.8rem', color: TEXT_DIM }}>{s.loc}</div>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.85rem', color: TEXT_DIM }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                        {s.kind}
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.85rem', color: TEXT_DIM }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                        {s.amenity}
-                      </div>
-
-                      <div>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '0.75rem', color: statusColor, fontWeight: 600 }}>
-                          <span className="circle" style={{ width: 6, height: 6, background: statusColor, borderRadius: '50%' }} />
-                          {s.status}
-                        </span>
-                      </div>
-
-                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <div style={{ background: 'rgba(255,255,255,0.02)', color: TEXT_DIM, border: `1px solid rgba(255,255,255,0.05)`, width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 200ms' }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-
-          {/* CORPORATE PLANS */}
-          {/* <section id="plans" style={{ padding: '140px 88px 140px', background: BG, borderTop: `1px solid ${BORDER}` }}>
-            <div style={{ maxWidth: 1440, margin: '0 auto 64px', textAlign: 'center' }}>
-              <div className="eyebrow" style={{ marginBottom: 14 }}>Plans · Fleets</div>
-              <h2 style={{ fontSize: 'clamp(2rem, 3.6vw, 3.4rem)', fontWeight: 600, marginBottom: 14, letterSpacing: -0.028 }}>
-                One platform. <span style={{ color: TEXT_DIM, fontWeight: 400 }}>Every fleet size.</span>
-              </h2>
-              <p style={{ color: TEXT_DIM, fontSize: '1.05rem', maxWidth: 580, margin: '0 auto', lineHeight: 1.65 }}>
-                Charging plans built for the way Indian fleets actually operate — from a handful of vehicles to nationwide rollouts.
-              </p>
-            </div>
-
-            <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, alignItems: 'stretch' }}>
-              {[
-                {
-                  name: 'Starter',
-                  tagline: 'For small teams',
-                  size: 'Up to 10 EVs',
-                  price: '₹2,499',
-                  cadence: '/ month',
-                  features: ['Standard AC charging access', 'Basic usage reports', 'UPI & FASTag payments', '24/7 station access', 'Email support'],
-                  cta: 'Get started',
-                  featured: false,
-                },
-                {
-                  name: 'Growth',
-                  tagline: 'For scaling fleets',
-                  size: '10–50 EVs',
-                  price: '₹9,999',
-                  cadence: '/ month',
-                  features: ['Everything in Starter', 'Fast + DC charging access', 'Smart usage analytics', 'Dedicated account manager', 'Priority 24/7 support', 'Multi-driver billing'],
-                  cta: 'Start free trial',
-                  featured: true,
-                },
-                {
-                  name: 'Enterprise',
-                  tagline: 'For large operations',
-                  size: '50+ EVs',
-                  price: 'Custom',
-                  cadence: 'Contact sales',
-                  features: ['Everything in Growth', 'Dedicated charging stations', 'Custom API & integrations', 'Real-time fleet telematics', 'White-label deployment', '99.99% SLA · regional CSM'],
-                  cta: 'Contact sales',
-                  featured: false,
-                },
-              ].map((p, i) => (
-                <motion.div key={p.name}
-                  initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.6, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+              <div style={{
+                width: '100%',
+                height: '560px',
+                background: '#0B0F0D',
+                borderRadius: 20,
+                border: '1px solid rgba(255,255,255,0.1)',
+                overflow: 'hidden',
+                boxShadow: '0 20px 48px rgba(0,0,0,0.5)',
+                position: 'relative'
+              }}>
+                <iframe
+                  src="/dashboard.html"
                   style={{
-                    background: p.featured ? `linear-gradient(180deg, ${CARD}, ${SURFACE})` : CARD,
-                    border: `1px solid ${p.featured ? BORDER_STRONG : BORDER}`,
-                    borderRadius: 16, padding: 32, position: 'relative',
-                    display: 'flex', flexDirection: 'column',
-                    transform: p.featured ? 'translateY(-8px)' : 'none',
+                    width: '100%',
+                    height: '100%',
+                    border: 'none',
+                    background: '#0B0F0D'
                   }}
-                >
-                  {p.featured && (
-                    <span style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: ACCENT, color: '#0B0F0D', fontSize: '0.68rem', fontWeight: 600, padding: '5px 14px', borderRadius: 999, letterSpacing: 0.04 }}>Most popular</span>
-                  )}
-
-                  <div style={{ marginBottom: 22 }}>
-                    <div className="eyebrow" style={{ marginBottom: 8, color: p.featured ? ACCENT : ACCENT_SOFT }}>{p.tagline}</div>
-                    <h3 style={{ fontSize: '1.4rem', fontWeight: 600, color: TEXT, letterSpacing: -0.025, marginBottom: 4 }}>{p.name}</h3>
-                    <div style={{ fontSize: '0.86rem', color: TEXT_DIM, fontWeight: 400 }}>{p.size}</div>
-                  </div>
-
-                  <div style={{ marginBottom: 22, paddingBottom: 22, borderBottom: `1px solid ${BORDER}` }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                      <span style={{ fontSize: '2.4rem', fontWeight: 600, color: TEXT, letterSpacing: -0.035, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{p.price}</span>
-                      <span style={{ fontSize: '0.86rem', color: TEXT_DIM, fontWeight: 400 }}>{p.cadence}</span>
-                    </div>
-                  </div>
-
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12, flex: 1, marginBottom: 28 }}>
-                    {p.features.map((f, j) => (
-                      <li key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: '0.86rem', color: TEXT, lineHeight: 1.5 }}>
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, marginTop: 2 }}>
-                          <circle cx="8" cy="8" r="7" stroke={ACCENT_SOFT} strokeOpacity="0.4" strokeWidth="1" />
-                          <path d="M 5 8 L 7 10 L 11 6" stroke={ACCENT} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        <span style={{ color: TEXT_DIM, fontWeight: 400 }}>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  {p.featured ? (
-                    <button className="btn-accent" style={{ justifyContent: 'center' }}>{p.cta} <span>→</span></button>
-                  ) : (
-                    <button className="btn-ghost" style={{ justifyContent: 'center', display: 'inline-flex', alignItems: 'center', gap: 10 }}>{p.cta}</button>
-                  )}
-                </motion.div>
-              ))}
-            </div>
-
-            <div style={{ maxWidth: 1280, margin: '64px auto 0', padding: '24px 32px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20 }}>
-              <div>
-                <div style={{ fontSize: '1.05rem', fontWeight: 600, color: TEXT, letterSpacing: -0.015, marginBottom: 4 }}>Need something custom?</div>
-                <div style={{ fontSize: '0.86rem', color: TEXT_DIM, fontWeight: 400 }}>Hardware-only, white-label, or partner integrations — we&apos;ll build the right fit.</div>
+                  title="Energy Synapse Dashboard"
+                  scrolling="no"
+                />
               </div>
-              <button className="btn-ghost" style={{ padding: '11px 22px', fontSize: '0.85rem' }}>Talk to our team →</button>
             </div>
-          </section> */}
+          </section>
+
+
         </>
       )}
 
       {page === 'find-stations' && (
-        <section id="find-stations" style={{ padding: '120px 88px 140px', background: BG, minHeight: '100vh', overflow: 'hidden' }}>
-          <div style={{ maxWidth: 1440, margin: '0 auto 48px', textAlign: 'center' }}>
-            <div className="eyebrow" style={{ marginBottom: 14 }}>Station Intelligence</div>
-            <h2 style={{ fontSize: 'clamp(2rem, 3.6vw, 3.4rem)', fontWeight: 600, letterSpacing: -0.028 }}>
-              Locate any charger. <span style={{ color: TEXT_DIM, fontWeight: 400 }}>Real-time.</span>
-            </h2>
-          </div>
-
-          {/* MODERN MINIMAL FINDER */}
-          <div style={{ maxWidth: 1440, margin: '0 auto', height: 800, position: 'relative', borderRadius: 24, overflow: 'hidden', background: '#080C0A', border: `1px solid ${BORDER}` }}>
-
-            {/* MAP LAYER (Full Size) */}
-            <div style={{ position: 'absolute', inset: 0, opacity: 0.1, backgroundImage: `radial-gradient(${ACCENT}33 1px, transparent 1px)`, backgroundSize: '32px 32px' }} />
-            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-              <div style={{ width: '100%', height: '100%', maxWidth: 700, maxHeight: 700 }}>
-                <IndiaMap highlighted={focusedState || selectedStation.state} onHover={() => { }} />
-              </div>
-            </div>
-
-            {/* FLOATING TOP BAR: Search & Filters */}
-            <div style={{ position: 'absolute', top: 32, left: '50%', transform: 'translateX(-50%)', width: 'auto', display: 'flex', gap: 12, zIndex: 20 }}>
-              <div style={{ background: 'rgba(11, 15, 13, 0.8)', backdropFilter: 'blur(24px)', border: `1px solid rgba(255,255,255,0.08)`, borderRadius: 999, padding: '10px 10px 10px 24px', display: 'flex', alignItems: 'center', gap: 16 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={TEXT_DIM} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search city, state or ID..."
-                  style={{ background: 'transparent', border: 'none', color: TEXT, fontSize: '0.9rem', outline: 'none', width: 220 }}
-                />
-                <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.02)', border: `1px solid rgba(255,255,255,0.04)`, borderRadius: 999, padding: 4 }}>
-                  {['Any', 'CCS', 'Type 2'].map(c => (
-                    <button
-                      key={c}
-                      onClick={() => setConnFilter(c)}
-                      style={{ background: connFilter === c ? ACCENT : 'transparent', color: connFilter === c ? '#000' : TEXT_DIM, border: 'none', borderRadius: 999, padding: '8px 18px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 200ms', whiteSpace: 'nowrap' }}
-                    >{c}</button>
-                  ))}
-                </div>
-              </div>
-              <div style={{ background: 'rgba(11, 15, 13, 0.8)', backdropFilter: 'blur(24px)', border: `1px solid rgba(255,255,255,0.08)`, borderRadius: 999, padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 24 }}>
-                <span style={{ fontSize: '0.8rem', color: TEXT_DIM, fontWeight: 500, whiteSpace: 'nowrap' }}>Min Power</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: '1.2rem', color: ACCENT, fontWeight: 700, minWidth: 50, textAlign: 'right' }}>{minPower}kW</span>
-                  <input type="range" min="0" max="150" step="25" value={minPower} onChange={(e) => setMinPower(parseInt(e.target.value))} style={{ width: 90, accentColor: ACCENT, cursor: 'pointer' }} />
-                </div>
-              </div>
-            </div>
-
-            {/* FLOATING LEFT: Station List (Minimal) */}
-            <motion.div
-              initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-              style={{ position: 'absolute', top: 110, bottom: 32, left: 32, width: 280, display: 'flex', flexDirection: 'column', gap: 12, zIndex: 10 }}
-            >
-              <div style={{ color: TEXT_DIM, fontSize: '0.7rem', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>{filteredStations.length} Nearby Hubs</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', flex: 1, paddingRight: 8 }} className="custom-scrollbar">
-                {filteredStations.map(s => (
-                  <div
-                    key={s.id}
-                    onClick={() => setSelectedStationId(s.id)}
-                    style={{
-                      background: selectedStationId === s.id ? `${ACCENT}15` : 'rgba(255,255,255,0.03)',
-                      backdropFilter: 'blur(12px)',
-                      border: `1px solid ${selectedStationId === s.id ? ACCENT : 'rgba(255,255,255,0.08)'}`,
-                      borderRadius: 14, padding: '16px 20px', cursor: 'pointer', transition: 'all 0.2s'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: TEXT }}>{s.name}</span>
-                      <span style={{ fontSize: '0.8rem', color: ACCENT, fontWeight: 600 }}>{s.kw}kW</span>
-                    </div>
-                    <div style={{ fontSize: '0.7rem', color: TEXT_DIM }}>{s.state} · {s.id}</div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* FLOATING RIGHT: Station Details (Modern Minimal) */}
-            <motion.div
-              key={selectedStationId}
-              initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-              style={{ position: 'absolute', top: 110, bottom: 32, right: 32, width: 340, background: 'rgba(11, 15, 13, 0.4)', backdropFilter: 'blur(32px)', border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 24, padding: 32, display: 'flex', flexDirection: 'column', gap: 24, zIndex: 10 }}
-            >
-              <div>
-                <h3 style={{ fontSize: '1.8rem', fontWeight: 700, color: TEXT, marginBottom: 8, letterSpacing: -1 }}>{selectedStation.name}</h3>
-                <p style={{ color: TEXT_DIM, fontSize: '0.9rem' }}>{selectedStation.state} · Corridor A1</p>
+        <section style={{ background: BG, paddingTop: '72px', overflow: 'hidden' }}>
+          <iframe
+            src="/find-stations.html"
+            style={{ width: '100%', height: '1100px', border: 'none' }}
+            title="Find Charging Stations"
+            scrolling="no"
+          />
+        </section>
+      )}
+      {page === 'home' && (
+        <>
+          {/* CTA SECTION */}
+          <section style={{ padding: '100px 48px 0', background: `linear-gradient(to bottom, #0a0e0c, ${SURFACE})`, position: 'relative', overflow: 'hidden', textAlign: 'center' }}>
+            <div style={{ maxWidth: 1000, margin: '0 auto', position: 'relative', zIndex: 10 }}>
+              <div style={{
+                color: TEXT_DIM,
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                letterSpacing: '0.2em',
+                textTransform: 'uppercase',
+                marginBottom: 24
+              }}>
+                FIND STATION NEAR IN YOUR LOCATION
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 14, padding: 16 }}>
-                  <div style={{ fontSize: '0.65rem', color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Peak Output</div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: ACCENT }}>{selectedStation.kw}kW</div>
-                </div>
-                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 14, padding: 16 }}>
-                  <div style={{ fontSize: '0.65rem', color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Stalls</div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: TEXT }}>2 <span style={{ fontSize: '0.8rem', fontWeight: 400, opacity: 0.5 }}>Live</span></div>
-                </div>
-              </div>
+              <h2 style={{
+                fontFamily: '"Orbitron", sans-serif',
+                fontSize: 'clamp(2rem, 4.2vw, 3.8rem)',
+                fontWeight: 900,
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase',
+                color: '#fff',
+                textDecoration: 'none',
+                textShadow: '0 4px 24px rgba(0,0,0,0.5)',
+                marginBottom: 48,
+                lineHeight: 1.2
+              }}>
+                <span style={{ color: '#FFFFFF', fontWeight: 900 }}>ENGINEERING THE FUTURE OF</span><br />
+                <span style={{
+                  background: `linear-gradient(90deg, ${ACCENT} 0%, #00FF88 100%)`,
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  fontWeight: 900
+                }}>EMISSION-FREE MOBILITY.</span>
+              </h2>
 
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {[1, 2].map(i => (
-                    <div key={i} style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.01)' }}>
-                      <div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 500, color: TEXT }}>Stall #{i} · {selectedStation.conn}</div>
-                        <div style={{ fontSize: '0.7rem', color: ACCENT }}>Ready for charge</div>
-                      </div>
-                      <div style={{ width: 32, height: 32, borderRadius: 8, background: `${ACCENT}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>⚡</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <button style={{ width: '100%', padding: '16px', background: ACCENT, color: '#000', border: 'none', borderRadius: 14, fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer', transition: 'transform 0.2s' }} onMouseEnter={(e: any) => e.target.style.transform = 'scale(1.02)'} onMouseLeave={(e: any) => e.target.style.transform = 'scale(1)'}>
-                  Get Directions ↗
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 80 }}>
+                <button className="btn-accent" onClick={() => navigate('find-stations')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 36px', fontSize: '0.95rem', fontWeight: 700 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                  FIND STATION
                 </button>
-                <div style={{ fontSize: '0.7rem', color: TEXT_DIM, textAlign: 'center' }}>Live telemetry synced via satellite</div>
+                <button style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '16px 36px',
+                  fontSize: '0.95rem', fontWeight: 700,
+                  background: 'transparent', color: ACCENT, border: `1px solid ${ACCENT}`, borderRadius: 999,
+                  cursor: 'pointer', transition: 'all 0.2s'
+                }}
+                  onMouseEnter={(e: any) => { e.target.style.background = `${ACCENT}15`; }}
+                  onMouseLeave={(e: any) => { e.target.style.background = 'transparent'; }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
+                  LEARN MORE
+                </button>
               </div>
-            </motion.div>
+            </div>
 
-            {/* TELEMETRY OVERLAY */}
-            <div style={{ position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 24, padding: '8px 24px', background: 'rgba(11,15,13,0.4)', backdropFilter: 'blur(12px)', border: `1px solid rgba(255,255,255,0.05)`, borderRadius: 999, zIndex: 10 }}>
-              <div style={{ fontSize: '0.75rem', color: TEXT_DIM }}>Grid: <span style={{ color: ACCENT }}>Stable</span></div>
-              <div style={{ fontSize: '0.75rem', color: TEXT_DIM }}>Uptime: <span style={{ color: TEXT }}>99.98%</span></div>
-              <div style={{ fontSize: '0.75rem', color: TEXT_DIM }}>Sync: <span style={{ color: TEXT }}>{clock}</span></div>
+            {/* 3D Illustration — Aggressive attachment */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', position: 'relative', zIndex: 5, marginTop: '-20px', marginBottom: 0, lineHeight: 0 }}>
+              <img src={hub3d} alt="EV Station 3D" style={{ maxWidth: '100%', width: 1100, objectFit: 'contain', display: 'block', margin: '0 auto', filter: 'drop-shadow(0 -20px 40px rgba(0,0,0,0.6))', marginBottom: '-12px', verticalAlign: 'bottom' }} />
+              {/* Subtle glow behind the station */}
+              <div style={{ position: 'absolute', bottom: '10%', left: '50%', transform: 'translate(-50%, 0)', width: '60%', height: '40%', background: `${ACCENT}20`, filter: 'blur(100px)', zIndex: -1, borderRadius: '50%' }} />
+            </div>
+          </section>
+        </>
+      )}
+
+      {/* FOOTER — EXACT REPLICA OF REFERENCE IMAGE */}
+      {page === 'privacy-policy' && (
+        <section style={{ background: BG, paddingTop: '120px', paddingBottom: '100px', minHeight: '80vh' }}>
+          <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 40px' }}>
+            <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: 40, color: '#fff' }}>Privacy Policy</h1>
+            <div style={{ color: TEXT_DIM, lineHeight: 1.8, fontSize: '1.05rem' }}>
+              <p style={{ marginBottom: 32, fontStyle: 'italic', borderLeft: `4px solid ${ACCENT}`, paddingLeft: 24 }}>At Trio, your privacy is important to us. This Privacy Policy document contains types of information that is collected and recorded by us and how we use it.</p>
+              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>1. Information We Collect</h2>
+              <p style={{ marginBottom: 24 }}>We may collect personal identification information such as name, email address, phone number, etc., when users visit our site, register, or interact with our services.</p>
+              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>2. How We Use Your Information</h2>
+              <p style={{ marginBottom: 24 }}>We use the information we collect in various ways, including to:</p>
+              <ul style={{ marginBottom: 24, paddingLeft: 20 }}>
+                {['Improve our website and services', 'Send periodic emails and updates', 'Respond to customer service requests', 'Personalize user experience'].map(item => <li key={item} style={{ marginBottom: 10 }}>{item}</li>)}
+              </ul>
+              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>3. Data Protection</h2>
+              <p style={{ marginBottom: 24 }}>We adopt appropriate data collection, storage, and processing practices and security measures to protect against unauthorized access, alteration, disclosure or destruction of your personal information.</p>
+              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>4. Sharing Your Information</h2>
+              <p style={{ marginBottom: 24 }}>We do not sell, trade, or rent users' personal identification information to others. We may share generic aggregated demographic information not linked to any personal identification information.</p>
             </div>
           </div>
         </section>
       )}
-      {/* CTA SECTION */}
-      <section style={{ padding: '100px 48px 0', background: `linear-gradient(to bottom, #0a0e0c, #050706)`, position: 'relative', overflow: 'hidden', textAlign: 'center', borderTop: `1px solid ${BORDER}` }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto', position: 'relative', zIndex: 10 }}>
-          <div style={{
-            color: TEXT_DIM,
-            fontSize: '0.8rem',
-            fontWeight: 700,
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            marginBottom: 24
-          }}>
-            FIND STATION NEAR IN YOUR LOCATION
+
+      {page === 'terms-conditions' && (
+        <section style={{ background: BG, paddingTop: '120px', paddingBottom: '100px', minHeight: '80vh' }}>
+          <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 40px' }}>
+            <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: 40, color: '#fff' }}>Terms & Conditions</h1>
+            <div style={{ color: TEXT_DIM, lineHeight: 1.8, fontSize: '1.05rem' }}>
+              <p style={{ marginBottom: 32, fontStyle: 'italic', borderLeft: `4px solid ${ACCENT}`, paddingLeft: 24 }}>Welcome to Trio. These terms and conditions outline the rules and regulations for the use of our website and services.</p>
+              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>1. Acceptance of Terms</h2>
+              <p style={{ marginBottom: 24 }}>By accessing this website we assume you accept these terms and conditions. Do not continue to use Trio if you do not agree to all the terms stated on this page.</p>
+              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>2. Intellectual Property Rights</h2>
+              <p style={{ marginBottom: 24 }}>Other than the content you own, under these Terms, Trio and/or its licensors own all the intellectual property rights and materials contained in this website.</p>
+              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>3. Restrictions</h2>
+              <p style={{ marginBottom: 24 }}>You are specifically restricted from all of the following:</p>
+              <ul style={{ marginBottom: 24, paddingLeft: 20 }}>
+                {['Publishing any website material in any other media', 'Selling, sublicensing and/or commercializing any website material', 'Publicly performing and/or showing any website material', 'Using this website in any way that is or may be damaging to this website'].map(item => <li key={item} style={{ marginBottom: 10 }}>{item}</li>)}
+              </ul>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {page === 'refund-policy' && (
+        <section style={{ background: BG, paddingTop: '120px', paddingBottom: '100px', minHeight: '80vh' }}>
+          <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 40px' }}>
+            <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: 40, color: '#fff' }}>Refund Policy</h1>
+            <div style={{ color: TEXT_DIM, lineHeight: 1.8, fontSize: '1.05rem' }}>
+              <p style={{ marginBottom: 32, fontStyle: 'italic', borderLeft: `4px solid ${ACCENT}`, paddingLeft: 24 }}>At Trio, we strive to ensure satisfaction with our services. If you're not entirely satisfied, we're here to help with a fair refund policy.</p>
+              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>1. Eligibility for Refunds</h2>
+              <p style={{ marginBottom: 24 }}>To be eligible for a refund, your request must be made within 7 days of service purchase and should include a valid reason for the request.</p>
+              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>2. Non-refundable Cases</h2>
+              <p style={{ marginBottom: 24 }}>The following cases are generally ineligible for a refund:</p>
+              <ul style={{ marginBottom: 24, paddingLeft: 20 }}>
+                {['Service already delivered and accepted by user', 'Customized or personalized fleet solutions', 'Issues arising from misuse or third-party integrations'].map(item => <li key={item} style={{ marginBottom: 10 }}>{item}</li>)}
+              </ul>
+              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>3. Refund Process</h2>
+              <p style={{ marginBottom: 24 }}>Once your request is approved, refunds will be processed to the original method of payment within 5–7 business days.</p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {page === 'about-us' && (
+        <section style={{ background: BG, color: TEXT, paddingTop: '100px', paddingBottom: '120px' }}>
+          {/* 1. HERO */}
+          <div style={{ textAlign: 'center', marginBottom: 120, padding: '0 24px' }}>
+            <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(3rem, 7vw, 4.5rem)', fontWeight: 800, color: '#fff', marginBottom: 20, letterSpacing: '-0.04em', lineHeight: 1.1 }}>
+              Our Commitment to <br />
+              <span style={{ color: ACCENT, fontSize: '0.8em' }}>Communities</span>
+            </h1>
+            <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.25rem', color: TEXT_DIM, maxWidth: 600, margin: '0 auto', lineHeight: 1.6, fontWeight: 400 }}>
+              Empowering local communities through clean technology and <br /> sustainable practices.
+            </p>
           </div>
 
-          <h2 style={{
-            fontFamily: '"Outfit", sans-serif',
-            fontSize: 'clamp(2.5rem, 4.5vw, 4.2rem)',
-            fontWeight: 800,
-            letterSpacing: '-0.02em',
-            textTransform: 'uppercase',
-            color: '#fff',
-            textDecoration: 'none',
-            textShadow: '0 4px 24px rgba(0,0,0,0.5)',
-            marginBottom: 48,
-            lineHeight: 1.15
-          }}>
-            <span style={{ color: '#E2E8E5' }}>WE ARE AT THE FOREFRONT OF THE</span><br />
-            <span style={{ color: '#8C948F' }}>ELECTRIC VEHICLE (EV) REVOLUTION.</span>
-          </h2>
+          <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px' }}>
+            {/* 2. VISION */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 60, alignItems: 'center', marginBottom: 120 }}>
+              <div style={{ background: SURFACE, borderRadius: 32, overflow: 'hidden', border: `1px solid ${BORDER}`, height: 420 }}>
+                <img src="/sustainability.png" alt="Sustainability" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+                  <div style={{ width: 40, height: 2, background: ACCENT, borderRadius: 1 }} />
+                  <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '2.5rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>Our Vision</h2>
+                </div>
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.1rem', color: TEXT_DIM, lineHeight: 1.8, fontWeight: 400 }}>
+                  Trio envisions a world where every ride and every delivery contributes to a healthier planet. Our vision is to eliminate pollution and carbon emissions by creating a fully electric ecosystem for both personal mobility and logistics. We aspire to lead the transformation of the automotive and logistics industries, making sustainable, smart, and connected transportation accessible to all. By combining innovation, responsibility, and care for nature, we aim to build a future where progress and the environment move together in harmony.
+                </p>
+              </div>
+            </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 80 }}>
-            <button className="btn-accent" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 36px', fontSize: '0.95rem', fontWeight: 700 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              FIND STATION
-            </button>
-            <button style={{
-              display: 'flex', alignItems: 'center', gap: 10, padding: '16px 36px',
-              fontSize: '0.95rem', fontWeight: 700,
-              background: 'transparent', color: ACCENT, border: `1px solid ${ACCENT}`, borderRadius: 999,
-              cursor: 'pointer', transition: 'all 0.2s'
-            }}
-              onMouseEnter={(e: any) => { e.target.style.background = `${ACCENT}15`; }}
-              onMouseLeave={(e: any) => { e.target.style.background = 'transparent'; }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
-              LEARN MORE
-            </button>
+            {/* 3. MISSION */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: 60, alignItems: 'center', marginBottom: 120 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+                  <div style={{ width: 40, height: 2, background: ACCENT, borderRadius: 1 }} />
+                  <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '2.2rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>Our Mission</h2>
+                </div>
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1rem', color: TEXT_DIM, lineHeight: 1.7, marginBottom: 20 }}>
+                  At Trio, our mission is to redefine the way people move and businesses operate. We are committed to:
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {[
+                    "Developing electric cars that are eco-friendly, stylish, reliable, and affordable for everyday use.",
+                    "Revolutionizing logistics with 100% electric fleets that reduce congestion, minimize noise, and lower emissions.",
+                    "Supporting sustainability by adopting green practices in design, manufacturing, and operations for healthier cities.",
+                    "Driving innovation through smart technology, renewable energy integration, and continuous performance improvements.",
+                    "Empowering communities by raising awareness about eco-friendly mobility and promoting nature-first choices.",
+                    "Building a connected future where technology, people, and the environment coexist seamlessly."
+                  ].map((item, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1px solid ${ACCENT}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="4"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      </div>
+                      <span style={{ fontFamily: "'Outfit', sans-serif", color: TEXT_DIM, fontSize: '0.9rem', lineHeight: 1.4 }}>{item}</span>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontFamily: "'Outfit', sans-serif", marginTop: 24, paddingLeft: 20, borderLeft: `2px solid ${ACCENT}33`, fontStyle: 'italic', color: TEXT_DIM, fontSize: '0.9rem' }}>
+                  Our purpose is clear: to protect nature, reduce pollution, and create a sustainable legacy where clean mobility becomes the heartbeat of modern living.
+                </p>
+              </div>
+              <div style={{ background: SURFACE, borderRadius: 32, overflow: 'hidden', border: `1px solid ${BORDER}`, height: 500 }}>
+                <img src="/energy.png" alt="Energy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+            </div>
+
+            {/* 4. STORY */}
+            <div style={{ maxWidth: 800, margin: '0 auto 160px', textAlign: 'center' }}>
+              <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '3rem', fontWeight: 800, color: '#fff', marginBottom: 12 }}>Our <span style={{ color: ACCENT }}>Story</span></h2>
+              <div style={{ width: 60, height: 2, background: ACCENT, margin: '0 auto 60px' }} />
+              <div style={{ fontFamily: "'Outfit', sans-serif", color: TEXT_DIM, fontSize: '1.15rem', lineHeight: 1.8, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 32 }}>
+                <p>Our journey began in the world of IT and telecom, where one of our founders worked on designing revenue models for Vodafone across Greece, Albania, and the UK. While building systems that directly impacted millions of customers, a realization struck — technology was advancing, but the hidden cost was environmental damage caused by emissions, vibrations, and unsustainable operations.</p>
+                <p>With a background in Computer Science and years of experience in telecom, the seed of an idea was planted: how can technology and business models be re-imagined to serve both people and the planet? This vision led to an entrepreneurial journey beginning in 2018, exploring eco-friendly solutions and sustainability-driven startups.</p>
+                <p>In 2022, the concept of clean transportation took shape. Starting small in Pune with just two leased vehicles, we tested the market, even driving the cars ourselves to understand a driver's real challenges. Those early months gave us invaluable insights into operations, payment irregularities, and the struggles drivers face daily. From there, we expanded to Kolkata, scaling our fleet and building strong foundations.</p>
+
+                <div style={{ padding: '60px 0', textAlign: 'center' }}>
+                  <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '2.2rem', fontWeight: 500, color: ACCENT, fontStyle: 'italic', lineHeight: 1.4, letterSpacing: '-0.01em' }}>
+                    "We're not just offering transport — we're driving a transition to greener, smarter mobility for all."
+                  </h3>
+                </div>
+
+                <p>In July 2024, after two years of groundwork, we officially registered Trio Evolution India Pvt. Ltd. — named to represent the three founders who came together from IT, transportation, and mechanical engineering backgrounds. Though one co-founder eventually moved on, the vision remained strong: to revolutionize mobility through sustainability.</p>
+                <p>We shifted from B2C to a B2B model, partnering with Mahindra Logistics to deploy EV fleets for large enterprises. Soon after, we began serving industry leaders like TCS, Capgemini, Cognizant, KPMG, and Indigo — expanding our fleet and proving that sustainable transport can meet the toughest corporate demands.</p>
+                <p>Recognizing that fleet growth is incomplete without infrastructure, we took the bold step of becoming Kolkata's first fleet owner to build a private EV charging hub in New Town, right at the heart of the city's IT corridor. This hub, set to be completed by August 2025, not only powers our fleet but also supports smaller operators, ensuring accessibility and affordability for all.</p>
+                <p>Today, our services span electric vehicle leasing, fleet management, smart charging infrastructure, and employee transportation solutions. From humble beginnings to city-wide impact, our story is proof that a vision backed by persistence can shape the future of mobility. As we move forward, our commitment remains the same: to empower businesses and communities to progress without compromising our planet. This is our story — and we're just getting started.</p>
+              </div>
+            </div>
+
+            {/* 5. LEADERSHIP */}
+            <div style={{ marginBottom: 160 }}>
+              <div style={{ textAlign: 'center', marginBottom: 80 }}>
+                <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '3rem', fontWeight: 800, color: '#fff', marginBottom: 20 }}>Leadership <span style={{ color: ACCENT }}>Team</span></h2>
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.2rem', color: TEXT_DIM, maxWidth: 640, margin: '0 auto' }}>
+                  The minds behind our mission to transform transportation through clean energy and community-driven innovation.
+                </p>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, maxWidth: 1000, margin: '0 auto' }}>
+                {[
+                  {
+                    name: "Subhash Kumar",
+                    role: "Founder & CEO",
+                    bio: "B.Tech in Computer Science. Former employee at Vodafone. Currently leading Trio as Founder & CEO, driving innovation and sustainable solutions.",
+                    img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1974&auto=format&fit=crop"
+                  },
+                  {
+                    name: "Somnath Das",
+                    role: "Founder & COO",
+                    bio: "M.A. graduate. Former employee at Uber. Now serving as Founder & COO of Trio, ensuring smooth operations and impactful strategies.",
+                    img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=2070&auto=format&fit=crop"
+                  }
+                ].map(leader => (
+                  <div key={leader.name} style={{ background: '#121915', border: `1px solid ${BORDER}`, borderRadius: 40, padding: 60, textAlign: 'center', transition: 'all 0.3s' }}>
+                    <div style={{ width: 120, height: 120, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 32px', border: `4px solid ${ACCENT}22` }}>
+                      <img src={leader.img} alt={leader.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.75rem', fontWeight: 700, color: '#fff', marginBottom: 8 }}>{leader.name}</h3>
+                    <div style={{ fontFamily: "'Outfit', sans-serif", color: ACCENT, fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 24 }}>{leader.role}</div>
+                    <p style={{ fontFamily: "'Outfit', sans-serif", color: TEXT_DIM, fontSize: '0.95rem', lineHeight: 1.6 }}>{leader.bio}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 6. IMPACT */}
+            <div>
+              <div style={{ textAlign: 'center', marginBottom: 80 }}>
+                <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '3rem', fontWeight: 800, color: '#fff', marginBottom: 20 }}>Our <span style={{ color: ACCENT }}>Impact</span></h2>
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.2rem', color: TEXT_DIM, maxWidth: 640, margin: '0 auto' }}>
+                  We are dedicated to accelerating a clean, equitable future by integrating technology and sustainability in every journey.
+                </p>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24 }}>
+                {[
+                  { icon: 'M23 6l-9.5 9.5-5-5L1 18', title: "EV-First Fleet", desc: "Deploying electric vehicles and hybrid transport solutions across all regions by 2026." },
+                  { icon: 'M12 2L5 9h4v12h6V9h4L12 2z', title: "Commitment to Nature", desc: "Investing in reforestation and renewable projects to exceed net-zero impact by 2030." },
+                  { icon: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z', title: "Sustainable Smart Roads", desc: "Implementing road-based energy harvesting to power streetlights and EV charging stations." },
+                  { icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75', title: "Innovation & Inclusion", desc: "Fostering R&D and skill-building programs to empower rural communities in clean tech adoption." }
+                ].map((item, i) => (
+                  <div key={i} style={{ background: BG, border: `1px solid ${BORDER}`, borderTop: `4px solid ${ACCENT}`, borderRadius: 16, padding: 32, transition: 'transform 0.3s' }}>
+                    <div style={{ color: ACCENT, marginBottom: 20 }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={item.icon}></path></svg>
+                    </div>
+                    <h4 style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.2rem', fontWeight: 700, color: '#fff', marginBottom: 16 }}>{item.title}</h4>
+                    <p style={{ fontFamily: "'Outfit', sans-serif", color: TEXT_DIM, fontSize: '0.88rem', lineHeight: 1.6 }}>{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
+      )}
 
-        {/* 3D Illustration */}
-        <div style={{ display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 5, marginTop: '-20px' }}>
-          <img src={hub3d} alt="EV Station 3D" style={{ maxWidth: '100%', width: 1100, objectFit: 'contain', display: 'block', margin: '0 auto', filter: 'drop-shadow(0 -20px 40px rgba(0,0,0,0.6))' }} />
-          {/* Subtle glow behind the station */}
-          <div style={{ position: 'absolute', bottom: '10%', left: '50%', transform: 'translate(-50%, 0)', width: '60%', height: '40%', background: `${ACCENT}20`, filter: 'blur(100px)', zIndex: -1, borderRadius: '50%' }} />
-        </div>
-      </section>
+      {page === 'blog' && (
+        <section style={{ background: BG, paddingTop: '120px', paddingBottom: '100px', minHeight: '80vh' }}>
+          <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 40px', textAlign: 'center' }}>
+            <h1 style={{ fontSize: '4rem', fontWeight: 800, marginBottom: 24, color: '#fff' }}>Blog</h1>
+            <p style={{ fontSize: '1.25rem', color: TEXT_DIM }}>Coming soon. We are preparing insights into the future of electric mobility.</p>
+          </div>
+        </section>
+      )}
 
-      {/* FOOTER */}
-      <footer style={{ padding: '100px 88px 50px', background: SURFACE, borderTop: `1px solid ${BORDER}` }}>
+      <footer style={{ padding: '80px 88px 40px', background: SURFACE, borderTop: `1px solid ${BORDER}` }}>
         <div style={{ maxWidth: 1440, margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.5fr', gap: 64, marginBottom: 80 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 0.8fr 1.2fr 1.2fr', gap: 48, marginBottom: 60 }}>
+            {/* Column 1: Brand */}
             <div>
-              <img src={logo} alt="TRIO" style={{ height: '52px', marginBottom: 28 }} />
-              <p style={{ color: TEXT_DIM, fontSize: '0.95rem', lineHeight: 1.7, maxWidth: '380px', fontWeight: 400 }}>The intelligence layer for industrial-scale electric vehicle infrastructure.</p>
+              <img src={logo} alt="TRIO" style={{ height: '82px', marginBottom: 20 }} />
+              <div style={{ color: ACCENT, fontSize: '1.1rem', fontWeight: 700, marginBottom: 12, fontFamily: "'Inter', sans-serif" }}>Drive Smart. Go Green.</div>
+              <p style={{ color: TEXT_DIM, fontSize: '0.85rem', lineHeight: 1.6, marginBottom: 20, maxWidth: 240 }}>
+                TRIO EV is Kolkata's premier electric mobility company, delivering clean, green, and smart transportation solutions for businesses and individuals.
+              </p>
+              <div style={{ display: 'flex', gap: 12 }}>
+                {[
+                  'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z',
+                  'M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z'
+                ].map((path, i) => (
+                  <div key={i} style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill={TEXT_DIM}><path d={path}></path></svg>
+                  </div>
+                ))}
+              </div>
             </div>
+
+            {/* Column 2: Categories */}
             <div>
-              <div style={{ color: TEXT, fontWeight: 600, fontSize: '0.78rem', marginBottom: 22 }}>Platform</div>
-              {['Network', 'Security', 'Hardware'].map(l => <a key={l} href="#" style={{ display: 'block', color: TEXT_DIM, textDecoration: 'none', marginBottom: 12, fontSize: '0.88rem', transition: 'color 200ms' }} onMouseEnter={(e: any) => e.target.style.color = TEXT} onMouseLeave={(e: any) => e.target.style.color = TEXT_DIM}>{l}</a>)}
+              <div style={{ color: ACCENT, fontWeight: 800, fontSize: '0.7rem', marginBottom: 24, textTransform: 'uppercase', letterSpacing: '0.2em', fontFamily: "'Inter', sans-serif" }}>CATEGORIES</div>
+              {[
+                { label: 'Find stations', target: 'find-stations' },
+                { label: 'About us', target: 'about-us' },
+                { label: 'Blog', target: 'blog' }
+              ].map(l => (
+                <a key={l.label} href="#" onClick={(e) => { e.preventDefault(); navigate(l.target); }} style={{ display: 'block', color: TEXT, textDecoration: 'none', marginBottom: 16, fontSize: '0.9rem', fontWeight: 500, transition: 'color 200ms' }} onMouseEnter={(e: any) => e.target.style.color = ACCENT} onMouseLeave={(e: any) => e.target.style.color = TEXT}>{l.label}</a>
+              ))}
             </div>
+
+            {/* Column 3: Policies */}
             <div>
-              <div style={{ color: TEXT, fontWeight: 600, fontSize: '0.78rem', marginBottom: 22 }}>Resources</div>
-              {['API Docs', 'Support'].map(l => <a key={l} href="#" style={{ display: 'block', color: TEXT_DIM, textDecoration: 'none', marginBottom: 12, fontSize: '0.88rem', transition: 'color 200ms' }} onMouseEnter={(e: any) => e.target.style.color = TEXT} onMouseLeave={(e: any) => e.target.style.color = TEXT_DIM}>{l}</a>)}
+              <div style={{ color: ACCENT, fontWeight: 800, fontSize: '0.7rem', marginBottom: 24, textTransform: 'uppercase', letterSpacing: '0.2em', fontFamily: "'Inter', sans-serif" }}>POLICIES</div>
+              {[
+                { label: 'Privacy Policy', target: 'privacy-policy' },
+                { label: 'Terms & Conditions', target: 'terms-conditions' },
+                { label: 'Refund Policy', target: 'refund-policy' }
+              ].map(l => (
+                <a key={l.label} href="#" onClick={(e) => { e.preventDefault(); navigate(l.target); }} style={{ display: 'block', color: TEXT, textDecoration: 'none', marginBottom: 16, fontSize: '0.9rem', fontWeight: 500, transition: 'color 200ms' }} onMouseEnter={(e: any) => e.target.style.color = ACCENT} onMouseLeave={(e: any) => e.target.style.color = TEXT}>{l.label}</a>
+              ))}
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ color: TEXT, fontWeight: 600, fontSize: '1.3rem', marginBottom: 16, letterSpacing: -0.02 }}>Ready to scale?</div>
-              <button className="btn-accent">Contact sales</button>
+
+            {/* Column 4: Registered Address */}
+            <div>
+              <div style={{ color: ACCENT, fontWeight: 800, fontSize: '0.7rem', marginBottom: 24, textTransform: 'uppercase', letterSpacing: '0.2em', fontFamily: "'Inter', sans-serif" }}>REGISTERED ADDRESS</div>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+                <div style={{ color: ACCENT, marginTop: 2 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div>
+                <div style={{ color: TEXT_DIM, fontSize: '0.85rem', lineHeight: 1.5 }}>
+                  29E, Raipur Mondal Para Road, P.S. Netaji Nagar, Naktala, Kolkata - 700047, West Bengal, India
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+                <div style={{ color: ACCENT }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg></div>
+                <div style={{ color: TEXT_DIM, fontSize: '0.85rem' }}>+91 62918 42000</div>
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ color: ACCENT }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg></div>
+                <div style={{ color: TEXT_DIM, fontSize: '0.85rem' }}>info@trioev.com</div>
+              </div>
+            </div>
+
+            {/* Column 5: Office Address + Button */}
+            <div>
+              <div style={{ color: ACCENT, fontWeight: 800, fontSize: '0.7rem', marginBottom: 24, textTransform: 'uppercase', letterSpacing: '0.2em', fontFamily: "'Inter', sans-serif" }}>OFFICE ADDRESS</div>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+                <div style={{ color: ACCENT, marginTop: 2 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div>
+                <div style={{ color: TEXT_DIM, fontSize: '0.85rem', lineHeight: 1.5 }}>
+                  Shilpata More, Mahammadpur Road (Opposite Curiosity), New Town, Kolkata - 700135, West Bengal, India
+                </div>
+              </div>
+              <button
+                className="btn-accent"
+                style={{ width: '100%', padding: '16px 24px', fontSize: '0.85rem', fontWeight: 800, borderRadius: 8, background: '#5AF59F', color: '#000', boxShadow: '0 4px 14px rgba(90, 245, 159, 0.3)' }}
+                onClick={() => setShowContactForm(true)}
+              >
+                CONTACT US
+              </button>
             </div>
           </div>
-          <div style={{ color: TEXT_DIM, fontSize: '0.78rem', borderTop: `1px solid ${BORDER}`, paddingTop: 28, display: 'flex', justifyContent: 'space-between' }}>
-            <span>© 2026 TRIO Platform</span>
-            <span>All rights reserved</span>
+          <div style={{ color: TEXT_DIM, fontSize: '0.75rem', borderTop: `1px solid rgba(255,255,255,0.05)`, paddingTop: 24, display: 'flex', justifyContent: 'space-between' }}>
+            <span>© 2026 Trio Inc. All rights reserved.</span>
+            <span style={{ fontStyle: 'italic' }}>Clean. Green. Smart.</span>
           </div>
         </div>
       </footer>

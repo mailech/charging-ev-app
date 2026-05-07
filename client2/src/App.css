@@ -11,6 +11,7 @@
   &:hover {
     border-color: var(--accent-border);
   }
+
   &:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
@@ -42,8 +43,7 @@
     z-index: 1;
     top: 34px;
     height: 28px;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
-      scale(1.4);
+    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg) scale(1.4);
   }
 
   .vite {
@@ -51,8 +51,7 @@
     top: 107px;
     height: 26px;
     width: auto;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
-      scale(0.8);
+    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg) scale(0.8);
   }
 }
 
@@ -75,9 +74,10 @@
   border-top: 1px solid var(--border);
   text-align: left;
 
-  & > div {
+  &>div {
     flex: 1 1 0;
     padding: 32px;
+
     @media (max-width: 1024px) {
       padding: 24px 20px;
     }
@@ -130,6 +130,7 @@
     &:hover {
       box-shadow: var(--shadow);
     }
+
     .button-icon {
       height: 18px;
       width: 18px;
@@ -156,6 +157,7 @@
 #spacer {
   height: 88px;
   border-top: 1px solid var(--border);
+
   @media (max-width: 1024px) {
     height: 48px;
   }
@@ -177,8 +179,216 @@
     left: 0;
     border-left-color: var(--border);
   }
+
   &::after {
     right: 0;
     border-right-color: var(--border);
   }
+}
+
+/* ======================================================
+   KINETIC DASHBOARD & HUD STYLES
+   ====================================================== */
+.loader-stage { 
+  width: 460px; 
+  height: 460px; 
+  position: relative; 
+  display: grid; 
+  place-items: center; 
+  background: radial-gradient(circle at 50% 50%, rgba(94,200,255,0.05), transparent 70%);
+}
+
+.loader-grid { 
+  position: absolute; 
+  inset: 0; 
+  background-image: 
+    linear-gradient(rgba(94,200,255,0.06) 1px, transparent 1px), 
+    linear-gradient(90deg, rgba(94,200,255,0.06) 1px, transparent 1px); 
+  background-size: 32px 32px; 
+  pointer-events: none; 
+  mask-image: radial-gradient(circle at 50% 50%, black 40%, transparent 90%); 
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, black 40%, transparent 90%); 
+}
+
+.loader-hud-overlay { 
+  position: absolute; 
+  inset: -20px; 
+  pointer-events: none; 
+  z-index: 10; 
+  font-family: 'JetBrains Mono', monospace; 
+}
+
+.loader-hud-corner { 
+  position: absolute; 
+  width: 20px; 
+  height: 20px; 
+  border: 1.5px solid #5ec8ff; 
+  opacity: 0.6; 
+}
+
+.loader-corner-tl { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.loader-corner-tr { top: 0; right: 0; border-left: 0; border-bottom: 0; }
+.loader-corner-bl { bottom: 0; left: 0; border-right: 0; border-top: 0; }
+.loader-corner-br { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+
+.loader-hud-labels { 
+  position: absolute; 
+  inset: 20px; 
+  color: #5ec8ff; 
+  font-size: 10px; 
+  letter-spacing: 0.12em; 
+  opacity: 0.8;
+}
+
+.loader-hud-top-left { position: absolute; top: 0; left: 0; line-height: 1.7; }
+.loader-hud-bottom-right { position: absolute; bottom: 0; right: 0; text-align: right; line-height: 1.7; }
+
+.loader-hud-brand-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(94, 200, 255, 0.08);
+  pointer-events: none;
+  z-index: 0;
+  white-space: nowrap;
+}
+
+.loader-hud-brand-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  margin-bottom: 6px;
+  opacity: 0.6;
+}
+
+.loader-hud-brand-text div:not(.loader-hud-brand-title) {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+}
+
+.loader-bolt {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140px;
+  height: 140px;
+  opacity: 0.04;
+  fill: #5ec8ff;
+  pointer-events: none;
+}
+
+.loader-hud-scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #5ec8ff, transparent);
+  opacity: 0.15;
+  animation: scan 4s linear infinite;
+}
+
+@keyframes scan {
+  0% { top: 0; }
+  100% { top: 100%; }
+}
+
+.loader-ring-fill { 
+  fill: none; 
+  stroke: #5ec8ff; 
+  stroke-opacity: 0.4; 
+  stroke-width: 1; 
+  stroke-linecap: round; 
+  stroke-dasharray: 4 8; 
+  animation: rotate-ring 20s linear infinite;
+}
+
+@keyframes rotate-ring {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loader-country { 
+  fill: rgba(94,200,255,0.03); 
+  stroke: #5ec8ff; 
+  stroke-width: 0.6; 
+  stroke-opacity: 0.6; 
+  stroke-linejoin: round; 
+  stroke-linecap: round; 
+}
+
+.loader-state {
+  fill: transparent;
+  stroke: #5ec8ff;
+  stroke-width: 0.3;
+  stroke-opacity: 0.2;
+  transition: all 0.2s ease;
+  cursor: crosshair;
+}
+
+.loader-state:hover {
+  fill: rgba(94, 200, 255, 0.15);
+  stroke-opacity: 0.8;
+}
+
+.loader-station-core { 
+  fill: #5ec8ff; 
+  filter: drop-shadow(0 0 4px #5ec8ff);
+  animation: loader-blink 2s ease-in-out infinite; 
+}
+
+.loader-station-pulse { 
+  fill: none; 
+  stroke: #5ec8ff; 
+  stroke-width: 1; 
+  animation: loader-pulse 3s ease-out infinite; 
+}
+
+@keyframes loader-pulse { 
+  0% { transform: scale(0.5); opacity: 0.8; } 
+  80% { transform: scale(2.5); opacity: 0; } 
+  100% { transform: scale(2.5); opacity: 0; } 
+}
+
+@keyframes loader-blink { 
+  0%, 100% { opacity: 0.7; } 
+  50% { opacity: 1; } 
+}
+
+.loader-accent-white { color: #ffffff; font-weight: 600; }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.loader-tooltip {
+  position: absolute;
+  padding: 8px 12px;
+  background: rgba(11, 15, 13, 0.95);
+  border: 1px solid rgba(94, 200, 255, 0.2);
+  color: #fff;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  pointer-events: none;
+  z-index: 100;
+  border-radius: 4px;
+  transform: translate(15px, -50%);
+  display: none;
+  white-space: nowrap;
+}
+
+.loader-tooltip.show {
+  display: block;
+}
+
+.loader-tooltip .accent {
+  color: #5ec8ff;
+  margin-right: 6px;
 }
