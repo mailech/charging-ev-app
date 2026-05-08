@@ -5,7 +5,7 @@ import {
     slideTogglePatchSchema,
     slideUpsertSchema,
 } from '@trio/shared/carousel';
-import { validate } from '@/middleware/validate';
+import { validate } from '@/middleware/validate.js';
 import * as service from './carousel.service.js';
 
 export const carouselPublicRouter: Router = Router();

@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { validate } from '@/middleware/validate';
-import { requireAuth } from '@/middleware/auth';
-import { issueCsrfToken } from '@/middleware/csrf';
+import { validate } from '@/middleware/validate.js';
+import { requireAuth } from '@/middleware/auth.js';
+import { issueCsrfToken } from '@/middleware/csrf.js';
 import { loginSchema, registerSchema } from './auth.schema.js';
 import {
     csrfHandler,

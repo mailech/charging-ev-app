@@ -1,8 +1,8 @@
 import sharp from 'sharp';
 import type { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { deleteKey, newKey, publicUrl, putBuffer } from '@/lib/storage';
-import { badRequest, notFound } from '@/utils/http-error';
+import { prisma } from '@/lib/prisma.js';
+import { deleteKey, newKey, publicUrl, putBuffer } from '@/lib/storage.js';
+import { badRequest, notFound } from '@/utils/http-error.js';
 
 const VARIANTS = [1600, 800, 400] as const;
 const MAX_BYTES = 8 * 1024 * 1024;

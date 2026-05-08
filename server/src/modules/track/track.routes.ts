@@ -2,9 +2,9 @@ import crypto from 'node:crypto';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
-import { validate } from '@/middleware/validate';
-import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
+import { validate } from '@/middleware/validate.js';
+import { prisma } from '@/lib/prisma.js';
+import { logger } from '@/lib/logger.js';
 
 const trackBodySchema = z.object({
     path: z.string().min(1).max(512),

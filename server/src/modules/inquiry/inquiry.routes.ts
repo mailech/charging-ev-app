@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { validate } from '@/middleware/validate';
+import { validate } from '@/middleware/validate.js';
 import {
     inquiryListQuerySchema,
     inquiryNoteCreateSchema,

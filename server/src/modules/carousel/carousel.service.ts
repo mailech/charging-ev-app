@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { notFound } from '@/utils/http-error';
+import { prisma } from '@/lib/prisma.js';
+import { notFound } from '@/utils/http-error.js';
 import type {
     CarouselUpdateInput,
     SlideReorderInput,

@@ -1,8 +1,8 @@
 import type { RequestHandler } from 'express';
 import * as mediaService from './media.service.js';
-import { badRequest } from '@/utils/http-error';
-import { logger } from '@/lib/logger';
-import { HttpError } from '@/utils/http-error';
+import { badRequest } from '@/utils/http-error.js';
+import { logger } from '@/lib/logger.js';
+import { HttpError } from '@/utils/http-error.js';
 
 export const uploadHandler: RequestHandler = async (req, res, next) => {
     try {

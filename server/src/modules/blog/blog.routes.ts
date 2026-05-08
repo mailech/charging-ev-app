@@ -7,7 +7,7 @@ import {
     postUpsertSchema,
     tagUpsertSchema,
 } from '@trio/shared/blog';
-import { validate } from '@/middleware/validate';
+import { validate } from '@/middleware/validate.js';
 import * as categoryService from './category.service.js';
 import * as tagService from './tag.service.js';
 import * as postService from './post.service.js';

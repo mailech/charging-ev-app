@@ -1,6 +1,6 @@
-import { prisma } from '@/lib/prisma';
-import { conflict, notFound } from '@/utils/http-error';
-import { makeSlug } from '@/lib/slug';
+import { prisma } from '@/lib/prisma.js';
+import { conflict, notFound } from '@/utils/http-error.js';
+import { makeSlug } from '@/lib/slug.js';
 import type { TagUpsertInput } from '@trio/shared/blog';
 
 const select = { id: true, name: true, slug: true } as const;

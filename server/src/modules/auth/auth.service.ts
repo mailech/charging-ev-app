@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
-import { prisma } from '@/lib/prisma';
-import { signToken } from '@/utils/jwt';
-import { conflict, unauthorized } from '@/utils/http-error';
+import { prisma } from '@/lib/prisma.js';
+import { signToken } from '@/utils/jwt.js';
+import { conflict, unauthorized } from '@/utils/http-error.js';
 import type { LoginInput, RegisterInput } from './auth.schema.js';
 
 const userSelect = {

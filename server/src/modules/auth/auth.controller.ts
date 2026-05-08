@@ -1,8 +1,8 @@
 import type { RequestHandler } from 'express';
 import * as authService from './auth.service.js';
 import type { LoginInput, RegisterInput } from './auth.schema.js';
-import { ADMIN_SESSION_COOKIE } from '@/middleware/auth';
-import { env } from '@/config/env';
+import { ADMIN_SESSION_COOKIE } from '@/middleware/auth.js';
+import { env } from '@/config/env.js';
 
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 

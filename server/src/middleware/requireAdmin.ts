@@ -1,5 +1,5 @@
 import type { RequestHandler } from 'express';
-import { forbidden, unauthorized } from '@/utils/http-error';
+import { forbidden, unauthorized } from '@/utils/http-error.js';
 
 export const requireAdmin: RequestHandler = (req, _res, next) => {
     if (!req.user) return next(unauthorized());

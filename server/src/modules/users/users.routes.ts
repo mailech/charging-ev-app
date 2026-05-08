@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { validate } from '@/middleware/validate';
+import { validate } from '@/middleware/validate.js';
 import * as usersService from './users.service.js';
 
 const listQuerySchema = z.object({

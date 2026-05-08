@@ -1,8 +1,8 @@
 import type { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { conflict, notFound } from '@/utils/http-error';
-import { calcReadingMinutes, makeSlug } from '@/lib/slug';
-import { shapeMedia } from '@/modules/media/media.service';
+import { prisma } from '@/lib/prisma.js';
+import { conflict, notFound } from '@/utils/http-error.js';
+import { calcReadingMinutes, makeSlug } from '@/lib/slug.js';
+import { shapeMedia } from '@/modules/media/media.service.js';
 import type { PostListQuery, PostStatus, PostUpsertInput } from '@trio/shared/blog';
 
 const summarySelect = {

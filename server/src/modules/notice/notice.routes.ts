@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { noticeUpdateSchema } from '@trio/shared/notice';
-import { validate } from '@/middleware/validate';
+import { validate } from '@/middleware/validate.js';
 import * as service from './notice.service.js';
 
 export const noticePublicRouter: Router = Router();

@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma.js';
 import type { NoticeUpdateInput } from '@trio/shared/notice';
 
 const select = {

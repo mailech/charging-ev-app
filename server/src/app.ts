@@ -3,10 +3,10 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import pinoHttp from 'pino-http';
-import { env } from '@/config/env';
-import { logger } from '@/lib/logger';
-import { apiRouter } from '@/routes';
-import { errorHandler, notFoundHandler } from '@/middleware/error';
+import { env } from '@/config/env.js';
+import { logger } from '@/lib/logger.js';
+import { apiRouter } from '@/routes/index.js';
+import { errorHandler, notFoundHandler } from '@/middleware/error.js';
 
 export function createApp() {
     const app = express();

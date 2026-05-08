@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
 import crypto from 'node:crypto';
-import { env } from '@/config/env';
-import { forbidden } from '@/utils/http-error';
+import { env } from '@/config/env.js';
+import { forbidden } from '@/utils/http-error.js';
 
 export const CSRF_COOKIE = 'csrf_token';
 export const CSRF_HEADER = 'x-csrf-token';

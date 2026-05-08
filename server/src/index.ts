@@ -1,9 +1,9 @@
 import dns from 'node:dns';
 import net from 'node:net';
-import { createApp } from '@/app';
-import { env } from '@/config/env';
-import { logger } from '@/lib/logger';
-import { prisma } from '@/lib/prisma';
+import { createApp } from '@/app.js';
+import { env } from '@/config/env.js';
+import { logger } from '@/lib/logger.js';
+import { prisma } from '@/lib/prisma.js';
 
 // Prefer IPv4 for DNS — many providers (e.g. Neon over AWS) misbehave on IPv6 in serverless.
 dns.setDefaultResultOrder('ipv4first');
