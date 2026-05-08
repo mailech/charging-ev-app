@@ -16,7 +16,6 @@ import {
     useCreateTagMutation,
     useDeletePostMutation,
     usePostQuery,
-    useSetPostStatusMutation,
     useTagsQuery,
     useUpdatePostMutation,
 } from '../hooks';
@@ -38,7 +37,6 @@ export default function PostEditor() {
     const query = usePostQuery(isNew ? undefined : id);
     const createMutation = useCreatePostMutation();
     const updateMutation = useUpdatePostMutation(id ?? '');
-    const statusMutation = useSetPostStatusMutation(id ?? '');
     const deleteMutation = useDeletePostMutation();
 
     const categories = useCategoriesQuery();
@@ -61,6 +59,32 @@ export default function PostEditor() {
     const [savedAt, setSavedAt] = useState<Date | null>(null);
     const [hydrated, setHydrated] = useState(false);
     const dirtyRef = useRef(false);
+
+    const prevIdRef = useRef<string | undefined>(id);
+    useEffect(() => {
+        const prev = prevIdRef.current;
+        if (prev === id) return;
+        prevIdRef.current = id;
+        // Don't reset when transitioning from 'new' to the just-created post id
+        // (the local state is the freshly-created post, no need to wipe)
+        if (prev === 'new' || !prev) return;
+        // When navigating to a different post, reset all editor state
+        // so we re-hydrate from the new post's data, not the previous one's.
+        setTitle('');
+        setSlug('');
+        setExcerpt('');
+        setContent(null);
+        setCoverId(null);
+        setCoverPreview(null);
+        setCategoryId('');
+        setTagIds([]);
+        setSeoTitle('');
+        setSeoDescription('');
+        setStatus('DRAFT');
+        setSavedAt(null);
+        setHydrated(false);
+        dirtyRef.current = false;
+    }, [id]);
 
     useEffect(() => {
         if (isNew || hydrated || !query.data) return;
@@ -125,8 +149,8 @@ export default function PostEditor() {
                     opts.statusOverride === 'PUBLISHED'
                         ? 'Published'
                         : opts.statusOverride === 'DRAFT'
-                          ? 'Reverted to draft'
-                          : 'Updated',
+                            ? 'Reverted to draft'
+                            : 'Updated',
                 );
             return id ?? null;
         } catch {
@@ -154,17 +178,7 @@ export default function PostEditor() {
     }
 
     async function unpublish() {
-        if (isNew) {
-            setStatus('DRAFT');
-            return;
-        }
-        try {
-            await statusMutation.mutateAsync('DRAFT');
-            setStatus('DRAFT');
-            toast.success('Reverted to draft');
-        } catch {
-            toast.error('Could not unpublish');
-        }
+        await save({ statusOverride: 'DRAFT' });
     }
 
     if (!isNew && query.isLoading && !query.data) {
@@ -178,6 +192,7 @@ export default function PostEditor() {
 
     const isPublished = status === 'PUBLISHED';
     const saving = createMutation.isPending || updateMutation.isPending;
+    const unpublishing = updateMutation.isPending;
     const editorKey = isNew ? 'new' : `post-${id ?? 'pending'}`;
     const editorReady = isNew || hydrated;
 
@@ -190,8 +205,8 @@ export default function PostEditor() {
                         savedAt
                             ? `Last saved ${savedAt.toLocaleTimeString()}${isPublished ? ' · Live' : ''}`
                             : isPublished
-                              ? 'Live'
-                              : 'Drafts auto-save.'
+                                ? 'Live'
+                                : 'Drafts auto-save.'
                     }
                     actions={
                         <div className="flex items-center gap-2">
@@ -201,7 +216,7 @@ export default function PostEditor() {
                             </Button>
                             <Button
                                 size="sm"
-                                loading={saving && !statusMutation.isPending}
+                                loading={saving}
                                 onClick={() => void save()}
                             >
                                 {isPublished ? 'Update' : 'Save draft'}
@@ -210,8 +225,8 @@ export default function PostEditor() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    loading={statusMutation.isPending}
-                                    onClick={unpublish}
+                                    loading={unpublishing}
+                                    onClick={() => void unpublish()}
                                 >
                                     Unpublish
                                 </Button>
