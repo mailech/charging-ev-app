@@ -22,15 +22,51 @@ const TEXT = '#F5F7F6'
 const TEXT_DIM = '#8C948F'
 
 // --- HUD CARD ---
-const HUDCard = ({ title, value, unit }: any) => (
+const HUDCard = ({ icon, title, value, unit, delay = 0.5 }: any) => (
   <motion.div
-    initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
-    style={{ background: CARD, border: `1px solid ${BORDER}`, padding: '16px 22px', minWidth: '170px', borderRadius: 12 }}
+    initial={{ opacity: 0, y: 16 }}
+    animate={{
+      opacity: 1,
+      y: 0,
+      boxShadow: [
+        '0 0 0px 0 rgba(0, 255, 136, 0)',
+        '0 0 28px 4px rgba(0, 255, 136, 0.35)',
+        '0 0 0px 0 rgba(0, 255, 136, 0)',
+      ],
+    }}
+    transition={{
+      default: { duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] },
+      boxShadow: { duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: delay + 0.7 },
+    }}
+    style={{
+      background: 'rgba(10, 14, 12, 0.55)',
+      backdropFilter: 'blur(6px)',
+      border: '1px solid rgba(255,255,255,0.04)',
+      padding: '10px 16px',
+      minWidth: '150px',
+      borderRadius: 12,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+    }}
   >
-    <div style={{ fontSize: '0.66rem', color: TEXT_DIM, fontWeight: 500, marginBottom: 6, letterSpacing: 0.02 }}>{title}</div>
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-      <span style={{ fontSize: '1.6rem', fontWeight: 600, color: TEXT, letterSpacing: -0.02, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
-      <span style={{ fontSize: '0.78rem', color: ACCENT_SOFT, fontWeight: 500 }}>{unit}</span>
+    {icon && (
+      <div style={{
+        color: ACCENT,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        {icon}
+      </div>
+    )}
+    <div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+        <span style={{ fontSize: '1.25rem', fontWeight: 700, color: TEXT, letterSpacing: -0.01 }}>{value}</span>
+        {unit && <span style={{ fontSize: '0.75rem', color: ACCENT, fontWeight: 600 }}>{unit}</span>}
+      </div>
+      <div style={{ fontSize: '0.68rem', color: TEXT_DIM, fontWeight: 500, marginTop: 2 }}>{title}</div>
     </div>
   </motion.div>
 );
@@ -631,741 +667,857 @@ export default function App() {
         onClose={() => setShowContactForm(false)}
       />
 
-      {page === 'home' && <HeroCarousel fallback={null} />}
+      <AnimatePresence mode="wait">
+        {page === 'home' && (
+          <motion.div
+            key="home"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {/* HERO — refined, premium */}
+            <HeroCarousel fallback={
+            <section style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', paddingTop: 72, background: BG }}>
+              {/* Subtle ambient gradient */}
+              <div style={{ position: 'absolute', right: '-10%', top: '15%', width: 760, height: 760, background: `radial-gradient(circle, ${ACCENT_SOFT}22, transparent 60%)`, pointerEvents: 'none', borderRadius: '50%' }} />
 
-      {page === 'home' && (
-        <>
-          {/* HERO — refined, premium */}
-          <section style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', paddingTop: 72, background: BG }}>
-            {/* Subtle ambient gradient */}
-            <div style={{ position: 'absolute', right: '-10%', top: '15%', width: 760, height: 760, background: `radial-gradient(circle, ${ACCENT_SOFT}22, transparent 60%)`, pointerEvents: 'none', borderRadius: '50%' }} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1.05fr 1fr', gap: 80, padding: '24px 88px 0', alignItems: 'center', minHeight: 'calc(100vh - 120px)', position: 'relative', zIndex: 5, maxWidth: 1440, margin: '0 auto' }}>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.05fr 1fr', gap: 80, padding: '24px 88px 0', alignItems: 'center', minHeight: 'calc(100vh - 120px)', position: 'relative', zIndex: 5, maxWidth: 1440, margin: '0 auto' }}>
+                {/* LEFT COLUMN */}
+                <div>
+                  <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}>
+                    {/* Eyebrow */}
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, marginBottom: 32, padding: '6px 12px', border: `1px solid ${BORDER}`, borderRadius: 999, background: SURFACE }}>
+                      <span className="circle pulse-dot" style={{ width: 6, height: 6, background: ACCENT, color: ACCENT }} />
+                      <span className="eyebrow" style={{ color: ACCENT_SOFT, fontSize: '0.68rem' }}>Live network · {clock || '--:--:--'}</span>
+                    </div>
 
-              {/* LEFT COLUMN */}
-              <div>
-                <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}>
-                  {/* Eyebrow */}
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, marginBottom: 32, padding: '6px 12px', border: `1px solid ${BORDER}`, borderRadius: 999, background: SURFACE }}>
-                    <span className="circle pulse-dot" style={{ width: 6, height: 6, background: ACCENT, color: ACCENT }} />
-                    <span className="eyebrow" style={{ color: ACCENT_SOFT, fontSize: '0.68rem' }}>Live network · {clock || '--:--:--'}</span>
-                  </div>
+                    {/* TITLE */}
+                    <h1 style={{ fontSize: 'clamp(2.4rem, 4.8vw, 4.8rem)', lineHeight: 1.02, marginBottom: 28, fontWeight: 600 }}>
+                      <motion.span initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} style={{ display: 'block' }}>
+                        EV power,
+                      </motion.span>
+                      <motion.span initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }} style={{ display: 'block', color: ACCENT }}>
+                        redefined.
+                      </motion.span>
+                    </h1>
 
-                  {/* TITLE */}
-                  <h1 style={{ fontSize: 'clamp(2.4rem, 4.8vw, 4.8rem)', lineHeight: 1.02, marginBottom: 28, fontWeight: 600 }}>
-                    <motion.span initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} style={{ display: 'block' }}>
-                      EV power,
-                    </motion.span>
-                    <motion.span initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }} style={{ display: 'block', color: ACCENT }}>
-                      redefined.
-                    </motion.span>
-                  </h1>
+                    <motion.p
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
+                      style={{ color: TEXT_DIM, fontSize: '1.1rem', lineHeight: 1.65, marginBottom: 40, maxWidth: '520px', fontWeight: 400 }}
+                    >
+                      The intelligence layer for industrial-scale charging infrastructure — orchestrating every electron from grid to vehicle, in real time.
+                    </motion.p>
 
-                  <motion.p
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
-                    style={{ color: TEXT_DIM, fontSize: '1.1rem', lineHeight: 1.65, marginBottom: 40, maxWidth: '520px', fontWeight: 400 }}
-                  >
-                    The intelligence layer for industrial-scale charging infrastructure — orchestrating every electron from grid to vehicle, in real time.
-                  </motion.p>
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
-                    style={{ display: 'flex', gap: 12, marginBottom: 64 }}
-                  >
-                    <button className="btn-accent">Find a station <span style={{ fontSize: '1rem' }}>→</span></button>
-                    <button className="btn-ghost">Platform overview</button>
-                  </motion.div>
-
-                  {/* STAT STRIP */}
-                  <motion.div
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.75 }}
-                    style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', maxWidth: 640, gap: 0 }}
-                  >
-                    <FlipStat label="Stations live" value={stationsOnline.toLocaleString()} trend="+12 / 24h" />
-                    <FlipStat label="kWh delivered today" value={kwhToday.toLocaleString()} trend="Live" />
-                    <FlipStat label="Avg session" value="22:14" trend="-1.4%" />
-                  </motion.div>
-                </motion.div>
-              </div>
-
-              {/* RIGHT COLUMN — charger */}
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '600px' }}>
-                {/* Soft floor gradient */}
-                <div style={{ position: 'absolute', bottom: '6%', left: '50%', transform: 'translateX(-50%)', width: '90%', height: '40%', background: `radial-gradient(ellipse at center, ${ACCENT_SOFT}1f, transparent 65%)`, pointerEvents: 'none' }} />
-
-                {/* charger image */}
-                <motion.img
-                  src={charger3d}
-                  initial={{ opacity: 0, scale: 0.96, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
-                  style={{ width: '100%', maxWidth: '680px', position: 'relative', zIndex: 5 }}
-                />
-
-                {/* HUD cards */}
-                <div style={{ position: 'absolute', top: '12%', right: '0%', zIndex: 20 }}>
-                  <HUDCard title="Max output" value="350" unit="kW" />
-                </div>
-                <div style={{ position: 'absolute', bottom: '22%', left: '-2%', zIndex: 20 }}>
-                  <HUDCard title="System uptime" value="99.9" unit="%" />
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom ticker — calm */}
-            <div className="ticker" style={{ position: 'relative', marginTop: 64 }}>
-              <div className="ticker-track">
-                {[...tickerItems, ...tickerItems].map((it, i) => {
-                  const parts = it.split(' / ');
-                  const isCharging = parts[2] === 'CHARGING';
-                  return (
-                    <span key={i} className="ticker-item">
-                      <span style={{ color: isCharging ? ACCENT_SOFT : TEXT_DIM }}>●</span>{' '}
-                      <span style={{ color: TEXT, fontWeight: 600 }}>{parts[0]}</span>
-                      <span className="sep">·</span>{parts[1]}
-                      <span className="sep">·</span><span style={{ color: isCharging ? ACCENT_SOFT : TEXT_DIM }}>{parts[2].toLowerCase()}</span>
-                      <span className="sep">·</span>{parts[3]}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-
-          {/* OUR SERVICES */}
-          <section id="services" style={{ padding: '40px 88px 60px', position: 'relative', overflow: 'hidden', background: '#0a0a0a' }}>
-            <div style={{ maxWidth: 1440, margin: '0 auto', position: 'relative', zIndex: 5 }}>
-              {/* Header */}
-              <div style={{ textAlign: 'center', marginBottom: 40 }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.2em', color: '#e0e0e0', marginBottom: 16, textTransform: 'uppercase' }}>
-                  EXPLORE OUR SERVICES
-                </div>
-                <h2 style={{ fontSize: 'clamp(3rem, 6vw, 6.5rem)', fontWeight: 800, letterSpacing: -0.01, marginBottom: 20, textTransform: 'uppercase', background: 'linear-gradient(180deg, #FFFFFF 0%, #B0B0B0 45%, #606060 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', filter: 'drop-shadow(0px 8px 16px rgba(0,0,0,0.4))' }}>
-                  OUR SERVICES
-                </h2>
-                <p style={{ color: TEXT_DIM, fontSize: '1.05rem', fontWeight: 400, maxWidth: 480, margin: '0 auto', lineHeight: 1.6 }}>
-                  We provide the best services for your electric vehicles, Fast,<br />Convenient and Eco-friendly.
-                </p>
-              </div>
-
-              {/* Main Content Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 80, alignItems: 'center', marginTop: 20 }}>
-                {/* Left: Image & Description */}
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ position: 'relative', width: '100%', height: '400px', marginBottom: 40 }}>
-                    <img src={serviceImg} alt="Eco Charging" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'left center' }} />
-                  </div>
-
-                  {/* Active Service Description */}
-                  {(() => {
-                    const SERVICES = [
-                      { title: 'CHARGING SOLUTIONS', desc: 'We offer Level 2 charging, which provides a moderate charging speed at 240V, ideal for daily use and longer stops.' },
-                      { title: 'USER CONVENIENCE', desc: 'Locate stations, start charging, and pay seamlessly using our mobile app. Enjoy real-time availability and smart routing.' },
-                      { title: 'ENERGY MANAGEMENT', desc: 'Our hubs are powered by 100% renewable energy with BESS stabilization for grid resilience and zero carbon footprint.' },
-                      { title: 'MAINTENANCE AND SUPPORT', desc: '24/7 dedicated support team with real-time telemetry and predictive maintenance to ensure 99.99% uptime.' }
-                    ];
-                    return (
-                      <div style={{ paddingLeft: 12 }}>
-                        <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', marginBottom: 14, letterSpacing: -0.01 }}>
-                          {SERVICES[activeService].title}
-                        </h3>
-                        <p style={{ color: TEXT_DIM, fontSize: '1rem', lineHeight: 1.6, maxWidth: '90%' }}>
-                          {SERVICES[activeService].desc}
-                        </p>
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {/* Right: List of Services */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {[
-                    { title: 'CHARGING SOLUTIONS' },
-                    { title: 'USER CONVENIENCE' },
-                    { title: 'ENERGY MANAGEMENT' },
-                    { title: 'MAINTENANCE AND SUPPORT' }
-                  ].map((srv, idx) => {
-                    const isActive = activeService === idx;
-                    return (
-                      <div
-                        key={idx}
-                        onClick={() => setActiveService(idx)}
-                        style={{
-                          padding: '36px 32px',
-                          cursor: 'pointer',
-                          position: 'relative',
-                          borderBottom: idx === 3 ? 'none' : `1px solid rgba(255,255,255,0.06)`,
-                          background: isActive ? 'linear-gradient(90deg, rgba(132, 204, 22, 0.08) 0%, transparent 100%)' : 'transparent',
-                          transition: 'all 0.3s ease',
-                          borderLeft: isActive ? `4px solid #84cc16` : '4px solid transparent'
-                        }}
+                    <motion.div
+                      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
+                      style={{ display: 'flex', gap: 12, marginBottom: 64 }}
+                    >
+                      <button
+                        className="btn-accent"
+                        onClick={() => setPage('find-stations')}
                       >
-                        <h4 style={{ fontSize: '1.25rem', fontWeight: 600, color: isActive ? '#84cc16' : '#ffffff', textTransform: 'uppercase', letterSpacing: -0.01, transition: 'color 0.3s ease' }}>
-                          {srv.title}
-                        </h4>
-                      </div>
+                        Find a station <span style={{ fontSize: '1rem' }}>→</span>
+                      </button>
+                    </motion.div>
+
+                    {/* STAT STRIP */}
+                    <motion.div
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.75 }}
+                      style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', maxWidth: 640, gap: 0 }}
+                    >
+                      <FlipStat label="Stations live" value={stationsOnline.toLocaleString()} trend="+12 / 24h" />
+                      <FlipStat label="kWh delivered today" value={kwhToday.toLocaleString()} trend="Live" />
+                      <FlipStat label="Avg session" value="22:14" trend="-1.4%" />
+                    </motion.div>
+                  </motion.div>
+                </div>
+
+                {/* RIGHT COLUMN — charger */}
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '600px' }}>
+                  {/* Soft floor gradient */}
+                  <div style={{ position: 'absolute', bottom: '6%', left: '50%', transform: 'translateX(-50%)', width: '90%', height: '40%', background: `radial-gradient(ellipse at center, ${ACCENT_SOFT}1f, transparent 65%)`, pointerEvents: 'none' }} />
+
+                  {/* charger image */}
+                  <motion.img
+                    src={charger3d}
+                    initial={{ opacity: 0, scale: 0.96, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+                    style={{ width: '100%', maxWidth: '680px', position: 'relative', zIndex: 5 }}
+                  />
+
+                  {/* HUD cards & Charging Lines */}
+                  <div style={{ position: 'absolute', top: '22%', left: '-15%', zIndex: 20 }}>
+                    <HUDCard
+                      icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>}
+                      title="Total Customers"
+                      value="56,894"
+                      delay={0.8}
+                    />
+                  </div>
+                  <div style={{ position: 'absolute', bottom: '28%', right: '-15%', zIndex: 20 }}>
+                    <HUDCard
+                      icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>}
+                      title="Total Bookings"
+                      value="38,465"
+                      delay={1.0}
+                    />
+                  </div>
+
+                  {/* CHARGING LINES — Static green dashed connectors. preserveAspectRatio=none so SVG units map 1:1 to container percentages; overflow:visible lets lines extend outside viewBox to reach cards (which sit at left/right:-15%) */}
+                  <svg
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 10, overflow: 'visible' }}
+                    viewBox="0 0 1000 600"
+                    preserveAspectRatio="none"
+                  >
+                    {/* Left Connection (Total Customers): flowing dashes toward card. Path is card→charger so positive offset moves dashes toward card */}
+                    <motion.path
+                      d="M -25 180 L -25 380 L 360 380"
+                      fill="none"
+                      stroke={ACCENT}
+                      strokeWidth="1.5"
+                      strokeDasharray="6 6"
+                      strokeLinecap="round"
+                      opacity={0.75}
+                      vectorEffect="non-scaling-stroke"
+                      animate={{ strokeDashoffset: [0, 24] }}
+                      transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
+                    />
+                    {/* Bright pulse traveling from charger → card (left) */}
+                    <motion.path
+                      d="M -25 180 L -25 380 L 360 380"
+                      fill="none"
+                      stroke={ACCENT}
+                      strokeWidth="2.2"
+                      strokeDasharray="50 600"
+                      strokeLinecap="round"
+                      vectorEffect="non-scaling-stroke"
+                      style={{ filter: `drop-shadow(0 0 6px ${ACCENT})` }}
+                      animate={{ strokeDashoffset: [-650, 0] }}
+                      transition={{ duration: 2.6, repeat: Infinity, ease: 'linear' }}
+                    />
+
+                    {/* Right Connection (Total Bookings): flowing dashes toward card. Path is charger→card so negative offset moves dashes toward card */}
+                    <motion.path
+                      d="M 760 320 L 1025 320 L 1025 380"
+                      fill="none"
+                      stroke={ACCENT}
+                      strokeWidth="1.5"
+                      strokeDasharray="6 6"
+                      strokeLinecap="round"
+                      opacity={0.75}
+                      vectorEffect="non-scaling-stroke"
+                      animate={{ strokeDashoffset: [0, -24] }}
+                      transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
+                    />
+                    {/* Bright pulse traveling from charger → card (right) */}
+                    <motion.path
+                      d="M 760 320 L 1025 320 L 1025 380"
+                      fill="none"
+                      stroke={ACCENT}
+                      strokeWidth="2.2"
+                      strokeDasharray="40 360"
+                      strokeLinecap="round"
+                      vectorEffect="non-scaling-stroke"
+                      style={{ filter: `drop-shadow(0 0 6px ${ACCENT})` }}
+                      animate={{ strokeDashoffset: [400, 0] }}
+                      transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Bottom ticker — calm */}
+              <div className="ticker" style={{ position: 'relative', marginTop: 64 }}>
+                <div className="ticker-track">
+                  {[...tickerItems, ...tickerItems].map((it, i) => {
+                    const parts = it.split(' / ');
+                    const isCharging = parts[2] === 'CHARGING';
+                    return (
+                      <span key={i} className="ticker-item">
+                        <span style={{ color: isCharging ? ACCENT_SOFT : TEXT_DIM }}>●</span>{' '}
+                        <span style={{ color: TEXT, fontWeight: 600 }}>{parts[0]}</span>
+                        <span className="sep">·</span>{parts[1]}
+                        <span className="sep">·</span><span style={{ color: isCharging ? ACCENT_SOFT : TEXT_DIM }}>{parts[2].toLowerCase()}</span>
+                        <span className="sep">·</span>{parts[3]}
+                      </span>
                     );
                   })}
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
+            } />
 
-          {/* INDIA COVERAGE — operational dashboard */}
-          {/* INDIA COVERAGE OPERATIONAL DASHBOARD (Integrated High-Fidelity Prototype) */}
-          <section id="network" className="loader-section" style={{ padding: '60px 0 80px', background: '#000', overflow: 'hidden' }}>
-            <div style={{ maxWidth: 1250, margin: '0 auto', padding: '0 40px' }}>
-              <div style={{ marginBottom: 40, textAlign: 'center' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, padding: '6px 16px', background: 'rgba(0, 255, 136, 0.08)', border: '1px solid rgba(0, 255, 136, 0.2)', borderRadius: 99, marginBottom: 16 }}>
-                  <div style={{ width: 6, height: 6, background: '#00FF88', borderRadius: '50%', boxShadow: '0 0 10px #00FF88' }}></div>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#00FF88', letterSpacing: '0.12em', textTransform: 'uppercase' }}>System Status: Operational</span>
+            {/* OUR SERVICES */}
+            <section id="services" style={{ padding: '40px 88px 60px', position: 'relative', overflow: 'hidden', background: '#0a0a0a' }}>
+              <div style={{ maxWidth: 1440, margin: '0 auto', position: 'relative', zIndex: 5 }}>
+                {/* Header */}
+                <div style={{ textAlign: 'center', marginBottom: 40 }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.2em', color: '#e0e0e0', marginBottom: 16, textTransform: 'uppercase' }}>
+                    EXPLORE OUR SERVICES
+                  </div>
+                  <h2 style={{ fontSize: 'clamp(3rem, 6vw, 6.5rem)', fontWeight: 800, letterSpacing: -0.01, marginBottom: 20, textTransform: 'uppercase', background: 'linear-gradient(180deg, #FFFFFF 0%, #B0B0B0 45%, #606060 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', filter: 'drop-shadow(0px 8px 16px rgba(0,0,0,0.4))' }}>
+                    OUR SERVICES
+                  </h2>
+                  <p style={{ color: TEXT_DIM, fontSize: '1.05rem', fontWeight: 400, maxWidth: 480, margin: '0 auto', lineHeight: 1.6 }}>
+                    We provide the best services for your electric vehicles, Fast,<br />Convenient and Eco-friendly.
+                  </p>
                 </div>
-                <h2 style={{ fontSize: 'clamp(2rem, 3vw, 3rem)', fontWeight: 600, marginBottom: 12, letterSpacing: '-0.03em', color: '#fff' }}>
-                  ENERGY <span style={{ color: '#00FF88' }}>SYNAPSE</span>
-                </h2>
-                <p style={{ fontSize: '1.05rem', color: 'rgba(255,255,255,0.6)', maxWidth: 540, margin: '0 auto' }}>
-                  India Coverage Operational Dashboard — Real-time infrastructure telemetry and network deployment metrics.
-                </p>
+
+                {/* Main Content Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 80, alignItems: 'center', marginTop: 20 }}>
+                  {/* Left: Image & Description */}
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ position: 'relative', width: '100%', height: '400px', marginBottom: 40 }}>
+                      <img src={serviceImg} alt="Eco Charging" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'left center' }} />
+                    </div>
+
+                    {/* Active Service Description */}
+                    {(() => {
+                      const SERVICES = [
+                        { title: 'CHARGING SOLUTIONS', desc: 'We offer Level 2 charging, which provides a moderate charging speed at 240V, ideal for daily use and longer stops.' },
+                        { title: 'USER CONVENIENCE', desc: 'Locate stations, start charging, and pay seamlessly using our mobile app. Enjoy real-time availability and smart routing.' },
+                        { title: 'ENERGY MANAGEMENT', desc: 'Our hubs are powered by 100% renewable energy with BESS stabilization for grid resilience and zero carbon footprint.' },
+                        { title: 'MAINTENANCE AND SUPPORT', desc: '24/7 dedicated support team with real-time telemetry and predictive maintenance to ensure 99.99% uptime.' }
+                      ];
+                      return (
+                        <div style={{ paddingLeft: 12 }}>
+                          <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', marginBottom: 14, letterSpacing: -0.01 }}>
+                            {SERVICES[activeService].title}
+                          </h3>
+                          <p style={{ color: TEXT_DIM, fontSize: '1rem', lineHeight: 1.6, maxWidth: '90%' }}>
+                            {SERVICES[activeService].desc}
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Right: List of Services */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                    {[
+                      { title: 'CHARGING SOLUTIONS' },
+                      { title: 'USER CONVENIENCE' },
+                      { title: 'ENERGY MANAGEMENT' },
+                      { title: 'MAINTENANCE AND SUPPORT' }
+                    ].map((srv, idx) => {
+                      const isActive = activeService === idx;
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => setActiveService(idx)}
+                          style={{
+                            padding: '36px 32px',
+                            cursor: 'pointer',
+                            position: 'relative',
+                            borderBottom: idx === 3 ? 'none' : `1px solid rgba(255,255,255,0.06)`,
+                            background: isActive ? 'linear-gradient(90deg, rgba(132, 204, 22, 0.08) 0%, transparent 100%)' : 'transparent',
+                            transition: 'all 0.3s ease',
+                            borderLeft: isActive ? `4px solid #84cc16` : '4px solid transparent'
+                          }}
+                        >
+                          <h4 style={{ fontSize: '1.25rem', fontWeight: 600, color: isActive ? '#84cc16' : '#ffffff', textTransform: 'uppercase', letterSpacing: -0.01, transition: 'color 0.3s ease' }}>
+                            {srv.title}
+                          </h4>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
+            </section>
 
-              <div style={{
-                width: '100%',
-                height: '560px',
-                background: '#0B0F0D',
-                borderRadius: 20,
-                border: '1px solid rgba(255,255,255,0.1)',
-                overflow: 'hidden',
-                boxShadow: '0 20px 48px rgba(0,0,0,0.5)',
-                position: 'relative'
-              }}>
-                <iframe
-                  src="/dashboard.html"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    border: 'none',
-                    background: '#0B0F0D'
-                  }}
-                  title="Energy Synapse Dashboard"
-                  scrolling="no"
-                />
+            {/* INDIA COVERAGE — operational dashboard */}
+            {/* INDIA COVERAGE OPERATIONAL DASHBOARD (Integrated High-Fidelity Prototype) */}
+            <section id="network" className="loader-section" style={{ padding: '60px 0 80px', background: '#000', overflow: 'hidden' }}>
+              <div style={{ maxWidth: 1250, margin: '0 auto', padding: '0 40px' }}>
+                <div style={{ marginBottom: 40, textAlign: 'center' }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, padding: '6px 16px', background: 'rgba(0, 255, 136, 0.08)', border: '1px solid rgba(0, 255, 136, 0.2)', borderRadius: 99, marginBottom: 16 }}>
+                    <div style={{ width: 6, height: 6, background: '#00FF88', borderRadius: '50%', boxShadow: '0 0 10px #00FF88' }}></div>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#00FF88', letterSpacing: '0.12em', textTransform: 'uppercase' }}>System Status: Operational</span>
+                  </div>
+                  <h2 style={{ fontSize: 'clamp(2rem, 3vw, 3rem)', fontWeight: 600, marginBottom: 12, letterSpacing: '-0.03em', color: '#fff' }}>
+                    ENERGY <span style={{ color: '#00FF88' }}>SYNAPSE</span>
+                  </h2>
+                  <p style={{ fontSize: '1.05rem', color: 'rgba(255,255,255,0.6)', maxWidth: 540, margin: '0 auto' }}>
+                    India Coverage Operational Dashboard — Real-time infrastructure telemetry and network deployment metrics.
+                  </p>
+                </div>
+
+                <div style={{
+                  width: '100%',
+                  height: '560px',
+                  background: '#0B0F0D',
+                  borderRadius: 20,
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  overflow: 'hidden',
+                  boxShadow: '0 20px 48px rgba(0,0,0,0.5)',
+                  position: 'relative'
+                }}>
+                  <iframe
+                    src="/dashboard.html"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      border: 'none',
+                      background: '#0B0F0D'
+                    }}
+                    title="Energy Synapse Dashboard"
+                    scrolling="no"
+                  />
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
 
-          {/* WHY EV CHARGING SECTION */}
-          <section id="why-ev" style={{ padding: '70px 88px 100px', background: '#000', position: 'relative', overflow: 'hidden' }}>
-            {/* Background Glow */}
-            <div style={{ position: 'absolute', left: '-10%', top: '40%', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(0, 255, 136, 0.05) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 1 }} />
+            {/* WHY EV CHARGING SECTION */}
+            <section id="why-ev" style={{ padding: '70px 88px 100px', background: '#000', position: 'relative', overflow: 'hidden' }}>
+              {/* Background Glow */}
+              <div style={{ position: 'absolute', left: '-10%', top: '40%', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(0, 255, 136, 0.05) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 1 }} />
 
-            <div style={{ maxWidth: 1440, margin: '0 auto', position: 'relative', zIndex: 5 }}>
-              {/* Header */}
-              <div style={{ textAlign: 'center', marginBottom: 50 }}>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.6 }}
-                  style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.2em', color: '#e0e0e0', marginBottom: 16, textTransform: 'uppercase' }}
-                >
-                  EV CHARGING IS THE BEST FOR ELECTRICAL VEHICLES
-                </motion.div>
-
-                <motion.h2
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.8, delay: 0.1 }}
-                  style={{
-                    fontSize: 'clamp(3rem, 6vw, 6.5rem)',
-                    fontWeight: 800,
-                    letterSpacing: -0.01,
-                    marginBottom: 32,
-                    textTransform: 'uppercase',
-                    background: 'linear-gradient(180deg, #FFFFFF 0%, #B0B0B0 45%, #606060 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    filter: 'drop-shadow(0px 8px 16px rgba(0,0,0,0.4))'
-                  }}
-                >
-                  WHY EV CHARGING?
-                </motion.h2>
-
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.8, delay: 0.3 }}
-                  style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1.1rem', fontWeight: 400, maxWidth: 800, margin: '0 auto', lineHeight: 1.6 }}
-                >
-                  Electric vehicle (EV) charging is at the forefront of a transportation revolution that is reshaping the way we move and the world we live in.
-                </motion.p>
-              </div>
-
-              {/* Content Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 100, alignItems: 'center' }}>
-                {/* Left side: Text Carousel */}
-                <div style={{ position: 'relative' }}>
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={whySlide}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      transition={{ duration: 0.5 }}
-                      style={{ minHeight: '320px' }}
-                    >
-                      <h3 style={{
-                        fontSize: '1.8rem',
-                        fontWeight: 700,
-                        color: '#ffffff',
-                        textTransform: 'uppercase',
-                        marginBottom: 32,
-                        letterSpacing: '0.02em',
-                        background: 'linear-gradient(180deg, #FFFFFF 0%, #A0A0A0 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent'
-                      }}>
-                        {WHY_SLIDES[whySlide].title}
-                      </h3>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1rem', lineHeight: 1.7 }}>
-                          {WHY_SLIDES[whySlide].text}
-                        </p>
-                      </div>
-                    </motion.div>
-                  </AnimatePresence>
-
-                  {/* Carousel Controls */}
+              <div style={{ maxWidth: 1440, margin: '0 auto', position: 'relative', zIndex: 5 }}>
+                {/* Header */}
+                <div style={{ textAlign: 'center', marginBottom: 50 }}>
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.6, delay: 0.6 }}
-                    style={{ display: 'flex', alignItems: 'center', gap: 24, marginTop: 48 }}
+                    transition={{ duration: 0.6 }}
+                    style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.2em', color: '#e0e0e0', marginBottom: 16, textTransform: 'uppercase' }}
                   >
-                    <div style={{ display: 'flex', gap: 12 }}>
-                      <button
-                        onClick={() => setWhySlide(prev => (prev - 1 + WHY_SLIDES.length) % WHY_SLIDES.length)}
-                        style={{
-                          width: 44,
-                          height: 44,
-                          borderRadius: '50%',
-                          border: '1px solid rgba(132, 204, 22, 0.4)',
-                          background: 'rgba(132, 204, 22, 0.05)',
-                          color: '#84cc16',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          transition: 'all 0.3s'
-                        }}
-                        onMouseEnter={(e: any) => { e.currentTarget.style.background = 'rgba(132, 204, 22, 0.15)'; e.currentTarget.style.borderColor = '#84cc16'; }}
-                        onMouseLeave={(e: any) => { e.currentTarget.style.background = 'rgba(132, 204, 22, 0.05)'; e.currentTarget.style.borderColor = 'rgba(132, 204, 22, 0.4)'; }}
-                      >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                      </button>
-
-                      <button
-                        onClick={() => setWhySlide(prev => (prev + 1) % WHY_SLIDES.length)}
-                        style={{
-                          width: 44,
-                          height: 44,
-                          borderRadius: '50%',
-                          border: '1px solid rgba(132, 204, 22, 0.4)',
-                          background: 'rgba(132, 204, 22, 0.05)',
-                          color: '#84cc16',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          transition: 'all 0.3s'
-                        }}
-                        onMouseEnter={(e: any) => { e.currentTarget.style.background = 'rgba(132, 204, 22, 0.15)'; e.currentTarget.style.borderColor = '#84cc16'; }}
-                        onMouseLeave={(e: any) => { e.currentTarget.style.background = 'rgba(132, 204, 22, 0.05)'; e.currentTarget.style.borderColor = 'rgba(132, 204, 22, 0.4)'; }}
-                      >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                      </button>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {WHY_SLIDES.map((_, i) => (
-                        <div
-                          key={i}
-                          onClick={() => setWhySlide(i)}
-                          style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: '50%',
-                            background: whySlide === i ? '#84cc16' : 'rgba(255,255,255,0.2)',
-                            cursor: 'pointer',
-                            transition: 'all 0.3s'
-                          }}
-                        />
-                      ))}
-                    </div>
+                    EV CHARGING IS THE BEST FOR ELECTRICAL VEHICLES
                   </motion.div>
+
+                  <motion.h2
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8, delay: 0.1 }}
+                    style={{
+                      fontSize: 'clamp(3rem, 6vw, 6.5rem)',
+                      fontWeight: 800,
+                      letterSpacing: -0.01,
+                      marginBottom: 32,
+                      textTransform: 'uppercase',
+                      background: 'linear-gradient(180deg, #FFFFFF 0%, #B0B0B0 45%, #606060 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      filter: 'drop-shadow(0px 8px 16px rgba(0,0,0,0.4))'
+                    }}
+                  >
+                    WHY EV CHARGING?
+                  </motion.h2>
+
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8, delay: 0.3 }}
+                    style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1.1rem', fontWeight: 400, maxWidth: 800, margin: '0 auto', lineHeight: 1.6 }}
+                  >
+                    Electric vehicle (EV) charging is at the forefront of a transportation revolution that is reshaping the way we move and the world we live in.
+                  </motion.p>
                 </div>
 
-                {/* Right side: Professor Profile */}
-                <div style={{ textAlign: 'right' }}>
-                  <motion.div
-                    initial={{ opacity: 0, x: 40 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 1, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                    style={{ position: 'relative', display: 'inline-block' }}
-                  >
-                    {/* Image Container with Gradient Background */}
-                    <div style={{
-                      width: '420px',
-                      height: '520px',
-                      background: 'radial-gradient(circle at center, rgba(0, 255, 136, 0.08) 0%, transparent 70%)',
-                      borderRadius: '20px',
-                      overflow: 'hidden',
-                      position: 'relative',
-                    }}>
-                      <img
-                        src={professorImg}
-                        alt="David M. Johnson"
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'contain',
-                          objectPosition: 'bottom center',
-                          filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.5))'
-                        }}
-                      />
-                    </div>
+                {/* Content Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 100, alignItems: 'center' }}>
+                  {/* Left side: Text Carousel */}
+                  <div style={{ position: 'relative' }}>
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={whySlide}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ duration: 0.5 }}
+                        style={{ minHeight: '320px' }}
+                      >
+                        <h3 style={{
+                          fontSize: '1.8rem',
+                          fontWeight: 700,
+                          color: '#ffffff',
+                          textTransform: 'uppercase',
+                          marginBottom: 32,
+                          letterSpacing: '0.02em',
+                          background: 'linear-gradient(180deg, #FFFFFF 0%, #A0A0A0 100%)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent'
+                        }}>
+                          {WHY_SLIDES[whySlide].title}
+                        </h3>
 
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1rem', lineHeight: 1.7 }}>
+                            {WHY_SLIDES[whySlide].text}
+                          </p>
+                        </div>
+                      </motion.div>
+                    </AnimatePresence>
+
+                    {/* Carousel Controls */}
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
-                      transition={{ duration: 0.8, delay: 0.8 }}
-                      style={{ marginTop: 32 }}
+                      transition={{ duration: 0.6, delay: 0.6 }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 24, marginTop: 48 }}
                     >
-                      <h4 style={{
-                        fontSize: '3.2rem',
-                        fontWeight: 800,
-                        color: '#ffffff',
-                        textTransform: 'uppercase',
-                        letterSpacing: '-0.02em',
-                        marginBottom: 4,
-                        background: 'linear-gradient(180deg, #FFFFFF 0%, #B0B0B0 45%, #606060 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                      }}>
-                        DAVID M. JOHNSON
-                      </h4>
-                      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
-                        ENVIRONMENT PROFESSOR AT HARVARD
-                      </p>
-                    </motion.div>
-                  </motion.div>
-                </div>
-              </div>
-            </div>
-          </section>
+                      <div style={{ display: 'flex', gap: 12 }}>
+                        <button
+                          onClick={() => setWhySlide(prev => (prev - 1 + WHY_SLIDES.length) % WHY_SLIDES.length)}
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: '50%',
+                            border: '1px solid rgba(132, 204, 22, 0.4)',
+                            background: 'rgba(132, 204, 22, 0.05)',
+                            color: '#84cc16',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s'
+                          }}
+                          onMouseEnter={(e: any) => { e.currentTarget.style.background = 'rgba(132, 204, 22, 0.15)'; e.currentTarget.style.borderColor = '#84cc16'; }}
+                          onMouseLeave={(e: any) => { e.currentTarget.style.background = 'rgba(132, 204, 22, 0.05)'; e.currentTarget.style.borderColor = 'rgba(132, 204, 22, 0.4)'; }}
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        </button>
 
-
-        </>
-      )}
-
-      {page === 'find-stations' && (
-        <section style={{ background: BG, paddingTop: '72px', overflow: 'hidden' }}>
-          <iframe
-            src="/find-stations.html"
-            style={{ width: '100%', height: '1100px', border: 'none' }}
-            title="Find Charging Stations"
-            scrolling="no"
-          />
-        </section>
-      )}
-      {page === 'home' && (
-        <>
-          {/* CTA SECTION */}
-          <section style={{ padding: '100px 48px 0', background: `linear-gradient(to bottom, #0a0e0c, ${SURFACE})`, position: 'relative', overflow: 'hidden', textAlign: 'center' }}>
-            <div style={{ maxWidth: 1000, margin: '0 auto', position: 'relative', zIndex: 10 }}>
-              <div style={{
-                color: TEXT_DIM,
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                letterSpacing: '0.2em',
-                textTransform: 'uppercase',
-                marginBottom: 24
-              }}>
-                FIND STATION NEAR IN YOUR LOCATION
-              </div>
-
-              <h2 style={{
-                fontFamily: '"Orbitron", sans-serif',
-                fontSize: 'clamp(2rem, 4.2vw, 3.8rem)',
-                fontWeight: 900,
-                letterSpacing: '0.05em',
-                textTransform: 'uppercase',
-                color: '#fff',
-                textDecoration: 'none',
-                textShadow: '0 4px 24px rgba(0,0,0,0.5)',
-                marginBottom: 48,
-                lineHeight: 1.2
-              }}>
-                <span style={{ color: '#FFFFFF', fontWeight: 900 }}>ENGINEERING THE FUTURE OF</span><br />
-                <span style={{
-                  background: `linear-gradient(90deg, ${ACCENT} 0%, #00FF88 100%)`,
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  fontWeight: 900
-                }}>EMISSION-FREE MOBILITY.</span>
-              </h2>
-
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 80 }}>
-                <button className="btn-accent" onClick={() => navigate('find-stations')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 36px', fontSize: '0.95rem', fontWeight: 700 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                  FIND STATION
-                </button>
-                <button style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '16px 36px',
-                  fontSize: '0.95rem', fontWeight: 700,
-                  background: 'transparent', color: ACCENT, border: `1px solid ${ACCENT}`, borderRadius: 999,
-                  cursor: 'pointer', transition: 'all 0.2s'
-                }}
-                  onMouseEnter={(e: any) => { e.target.style.background = `${ACCENT}15`; }}
-                  onMouseLeave={(e: any) => { e.target.style.background = 'transparent'; }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
-                  LEARN MORE
-                </button>
-              </div>
-            </div>
-
-            {/* 3D Illustration — Aggressive attachment */}
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', position: 'relative', zIndex: 5, marginTop: '-20px', marginBottom: 0, lineHeight: 0 }}>
-              <img src={hub3d} alt="EV Station 3D" style={{ maxWidth: '100%', width: 1100, objectFit: 'contain', display: 'block', margin: '0 auto', filter: 'drop-shadow(0 -20px 40px rgba(0,0,0,0.6))', marginBottom: '-12px', verticalAlign: 'bottom' }} />
-              {/* Subtle glow behind the station */}
-              <div style={{ position: 'absolute', bottom: '10%', left: '50%', transform: 'translate(-50%, 0)', width: '60%', height: '40%', background: `${ACCENT}20`, filter: 'blur(100px)', zIndex: -1, borderRadius: '50%' }} />
-            </div>
-          </section>
-        </>
-      )}
-
-      {/* FOOTER — EXACT REPLICA OF REFERENCE IMAGE */}
-      {page === 'privacy-policy' && (
-        <section style={{ background: BG, paddingTop: '120px', paddingBottom: '100px', minHeight: '80vh' }}>
-          <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 40px' }}>
-            <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: 40, color: '#fff' }}>Privacy Policy</h1>
-            <div style={{ color: TEXT_DIM, lineHeight: 1.8, fontSize: '1.05rem' }}>
-              <p style={{ marginBottom: 32, fontStyle: 'italic', borderLeft: `4px solid ${ACCENT}`, paddingLeft: 24 }}>At Trio, your privacy is important to us. This Privacy Policy document contains types of information that is collected and recorded by us and how we use it.</p>
-              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>1. Information We Collect</h2>
-              <p style={{ marginBottom: 24 }}>We may collect personal identification information such as name, email address, phone number, etc., when users visit our site, register, or interact with our services.</p>
-              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>2. How We Use Your Information</h2>
-              <p style={{ marginBottom: 24 }}>We use the information we collect in various ways, including to:</p>
-              <ul style={{ marginBottom: 24, paddingLeft: 20 }}>
-                {['Improve our website and services', 'Send periodic emails and updates', 'Respond to customer service requests', 'Personalize user experience'].map(item => <li key={item} style={{ marginBottom: 10 }}>{item}</li>)}
-              </ul>
-              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>3. Data Protection</h2>
-              <p style={{ marginBottom: 24 }}>We adopt appropriate data collection, storage, and processing practices and security measures to protect against unauthorized access, alteration, disclosure or destruction of your personal information.</p>
-              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>4. Sharing Your Information</h2>
-              <p style={{ marginBottom: 24 }}>We do not sell, trade, or rent users' personal identification information to others. We may share generic aggregated demographic information not linked to any personal identification information.</p>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {page === 'terms-conditions' && (
-        <section style={{ background: BG, paddingTop: '120px', paddingBottom: '100px', minHeight: '80vh' }}>
-          <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 40px' }}>
-            <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: 40, color: '#fff' }}>Terms & Conditions</h1>
-            <div style={{ color: TEXT_DIM, lineHeight: 1.8, fontSize: '1.05rem' }}>
-              <p style={{ marginBottom: 32, fontStyle: 'italic', borderLeft: `4px solid ${ACCENT}`, paddingLeft: 24 }}>Welcome to Trio. These terms and conditions outline the rules and regulations for the use of our website and services.</p>
-              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>1. Acceptance of Terms</h2>
-              <p style={{ marginBottom: 24 }}>By accessing this website we assume you accept these terms and conditions. Do not continue to use Trio if you do not agree to all the terms stated on this page.</p>
-              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>2. Intellectual Property Rights</h2>
-              <p style={{ marginBottom: 24 }}>Other than the content you own, under these Terms, Trio and/or its licensors own all the intellectual property rights and materials contained in this website.</p>
-              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>3. Restrictions</h2>
-              <p style={{ marginBottom: 24 }}>You are specifically restricted from all of the following:</p>
-              <ul style={{ marginBottom: 24, paddingLeft: 20 }}>
-                {['Publishing any website material in any other media', 'Selling, sublicensing and/or commercializing any website material', 'Publicly performing and/or showing any website material', 'Using this website in any way that is or may be damaging to this website'].map(item => <li key={item} style={{ marginBottom: 10 }}>{item}</li>)}
-              </ul>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {page === 'refund-policy' && (
-        <section style={{ background: BG, paddingTop: '120px', paddingBottom: '100px', minHeight: '80vh' }}>
-          <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 40px' }}>
-            <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: 40, color: '#fff' }}>Refund Policy</h1>
-            <div style={{ color: TEXT_DIM, lineHeight: 1.8, fontSize: '1.05rem' }}>
-              <p style={{ marginBottom: 32, fontStyle: 'italic', borderLeft: `4px solid ${ACCENT}`, paddingLeft: 24 }}>At Trio, we strive to ensure satisfaction with our services. If you're not entirely satisfied, we're here to help with a fair refund policy.</p>
-              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>1. Eligibility for Refunds</h2>
-              <p style={{ marginBottom: 24 }}>To be eligible for a refund, your request must be made within 7 days of service purchase and should include a valid reason for the request.</p>
-              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>2. Non-refundable Cases</h2>
-              <p style={{ marginBottom: 24 }}>The following cases are generally ineligible for a refund:</p>
-              <ul style={{ marginBottom: 24, paddingLeft: 20 }}>
-                {['Service already delivered and accepted by user', 'Customized or personalized fleet solutions', 'Issues arising from misuse or third-party integrations'].map(item => <li key={item} style={{ marginBottom: 10 }}>{item}</li>)}
-              </ul>
-              <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>3. Refund Process</h2>
-              <p style={{ marginBottom: 24 }}>Once your request is approved, refunds will be processed to the original method of payment within 5–7 business days.</p>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {page === 'about-us' && (
-        <section style={{ background: BG, color: TEXT, paddingTop: '100px', paddingBottom: '120px' }}>
-          {/* 1. HERO */}
-          <div style={{ textAlign: 'center', marginBottom: 120, padding: '0 24px' }}>
-            <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(3rem, 7vw, 4.5rem)', fontWeight: 800, color: '#fff', marginBottom: 20, letterSpacing: '-0.04em', lineHeight: 1.1 }}>
-              Our Commitment to <br />
-              <span style={{ color: ACCENT, fontSize: '0.8em' }}>Communities</span>
-            </h1>
-            <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.25rem', color: TEXT_DIM, maxWidth: 600, margin: '0 auto', lineHeight: 1.6, fontWeight: 400 }}>
-              Empowering local communities through clean technology and <br /> sustainable practices.
-            </p>
-          </div>
-
-          <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px' }}>
-            {/* 2. VISION */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 60, alignItems: 'center', marginBottom: 120 }}>
-              <div style={{ background: SURFACE, borderRadius: 32, overflow: 'hidden', border: `1px solid ${BORDER}`, height: 420 }}>
-                <img src="/sustainability.png" alt="Sustainability" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              </div>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-                  <div style={{ width: 40, height: 2, background: ACCENT, borderRadius: 1 }} />
-                  <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '2.5rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>Our Vision</h2>
-                </div>
-                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.1rem', color: TEXT_DIM, lineHeight: 1.8, fontWeight: 400 }}>
-                  Trio envisions a world where every ride and every delivery contributes to a healthier planet. Our vision is to eliminate pollution and carbon emissions by creating a fully electric ecosystem for both personal mobility and logistics. We aspire to lead the transformation of the automotive and logistics industries, making sustainable, smart, and connected transportation accessible to all. By combining innovation, responsibility, and care for nature, we aim to build a future where progress and the environment move together in harmony.
-                </p>
-              </div>
-            </div>
-
-            {/* 3. MISSION */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: 60, alignItems: 'center', marginBottom: 120 }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-                  <div style={{ width: 40, height: 2, background: ACCENT, borderRadius: 1 }} />
-                  <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '2.2rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>Our Mission</h2>
-                </div>
-                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1rem', color: TEXT_DIM, lineHeight: 1.7, marginBottom: 20 }}>
-                  At Trio, our mission is to redefine the way people move and businesses operate. We are committed to:
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  {[
-                    "Developing electric cars that are eco-friendly, stylish, reliable, and affordable for everyday use.",
-                    "Revolutionizing logistics with 100% electric fleets that reduce congestion, minimize noise, and lower emissions.",
-                    "Supporting sustainability by adopting green practices in design, manufacturing, and operations for healthier cities.",
-                    "Driving innovation through smart technology, renewable energy integration, and continuous performance improvements.",
-                    "Empowering communities by raising awareness about eco-friendly mobility and promoting nature-first choices.",
-                    "Building a connected future where technology, people, and the environment coexist seamlessly."
-                  ].map((item, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                      <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1px solid ${ACCENT}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
-                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="4"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <button
+                          onClick={() => setWhySlide(prev => (prev + 1) % WHY_SLIDES.length)}
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: '50%',
+                            border: '1px solid rgba(132, 204, 22, 0.4)',
+                            background: 'rgba(132, 204, 22, 0.05)',
+                            color: '#84cc16',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s'
+                          }}
+                          onMouseEnter={(e: any) => { e.currentTarget.style.background = 'rgba(132, 204, 22, 0.15)'; e.currentTarget.style.borderColor = '#84cc16'; }}
+                          onMouseLeave={(e: any) => { e.currentTarget.style.background = 'rgba(132, 204, 22, 0.05)'; e.currentTarget.style.borderColor = 'rgba(132, 204, 22, 0.4)'; }}
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                        </button>
                       </div>
-                      <span style={{ fontFamily: "'Outfit', sans-serif", color: TEXT_DIM, fontSize: '0.9rem', lineHeight: 1.4 }}>{item}</span>
-                    </div>
-                  ))}
-                </div>
-                <p style={{ fontFamily: "'Outfit', sans-serif", marginTop: 24, paddingLeft: 20, borderLeft: `2px solid ${ACCENT}33`, fontStyle: 'italic', color: TEXT_DIM, fontSize: '0.9rem' }}>
-                  Our purpose is clear: to protect nature, reduce pollution, and create a sustainable legacy where clean mobility becomes the heartbeat of modern living.
-                </p>
-              </div>
-              <div style={{ background: SURFACE, borderRadius: 32, overflow: 'hidden', border: `1px solid ${BORDER}`, height: 500 }}>
-                <img src="/energy.png" alt="Energy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              </div>
-            </div>
 
-            {/* 4. STORY */}
-            <div style={{ maxWidth: 800, margin: '0 auto 160px', textAlign: 'center' }}>
-              <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '3rem', fontWeight: 800, color: '#fff', marginBottom: 12 }}>Our <span style={{ color: ACCENT }}>Story</span></h2>
-              <div style={{ width: 60, height: 2, background: ACCENT, margin: '0 auto 60px' }} />
-              <div style={{ fontFamily: "'Outfit', sans-serif", color: TEXT_DIM, fontSize: '1.15rem', lineHeight: 1.8, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 32 }}>
-                <p>Our journey began in the world of IT and telecom, where one of our founders worked on designing revenue models for Vodafone across Greece, Albania, and the UK. While building systems that directly impacted millions of customers, a realization struck — technology was advancing, but the hidden cost was environmental damage caused by emissions, vibrations, and unsustainable operations.</p>
-                <p>With a background in Computer Science and years of experience in telecom, the seed of an idea was planted: how can technology and business models be re-imagined to serve both people and the planet? This vision led to an entrepreneurial journey beginning in 2018, exploring eco-friendly solutions and sustainability-driven startups.</p>
-                <p>In 2022, the concept of clean transportation took shape. Starting small in Pune with just two leased vehicles, we tested the market, even driving the cars ourselves to understand a driver's real challenges. Those early months gave us invaluable insights into operations, payment irregularities, and the struggles drivers face daily. From there, we expanded to Kolkata, scaling our fleet and building strong foundations.</p>
-
-                <div style={{ padding: '60px 0', textAlign: 'center' }}>
-                  <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '2.2rem', fontWeight: 500, color: ACCENT, fontStyle: 'italic', lineHeight: 1.4, letterSpacing: '-0.01em' }}>
-                    "We're not just offering transport — we're driving a transition to greener, smarter mobility for all."
-                  </h3>
-                </div>
-
-                <p>In July 2024, after two years of groundwork, we officially registered Trio Evolution India Pvt. Ltd. — named to represent the three founders who came together from IT, transportation, and mechanical engineering backgrounds. Though one co-founder eventually moved on, the vision remained strong: to revolutionize mobility through sustainability.</p>
-                <p>We shifted from B2C to a B2B model, partnering with Mahindra Logistics to deploy EV fleets for large enterprises. Soon after, we began serving industry leaders like TCS, Capgemini, Cognizant, KPMG, and Indigo — expanding our fleet and proving that sustainable transport can meet the toughest corporate demands.</p>
-                <p>Recognizing that fleet growth is incomplete without infrastructure, we took the bold step of becoming Kolkata's first fleet owner to build a private EV charging hub in New Town, right at the heart of the city's IT corridor. This hub, set to be completed by August 2025, not only powers our fleet but also supports smaller operators, ensuring accessibility and affordability for all.</p>
-                <p>Today, our services span electric vehicle leasing, fleet management, smart charging infrastructure, and employee transportation solutions. From humble beginnings to city-wide impact, our story is proof that a vision backed by persistence can shape the future of mobility. As we move forward, our commitment remains the same: to empower businesses and communities to progress without compromising our planet. This is our story — and we're just getting started.</p>
-              </div>
-            </div>
-
-            {/* 5. LEADERSHIP */}
-            <div style={{ marginBottom: 160 }}>
-              <div style={{ textAlign: 'center', marginBottom: 80 }}>
-                <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '3rem', fontWeight: 800, color: '#fff', marginBottom: 20 }}>Leadership <span style={{ color: ACCENT }}>Team</span></h2>
-                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.2rem', color: TEXT_DIM, maxWidth: 640, margin: '0 auto' }}>
-                  The minds behind our mission to transform transportation through clean energy and community-driven innovation.
-                </p>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, maxWidth: 1000, margin: '0 auto' }}>
-                {[
-                  {
-                    name: "Subhash Kumar",
-                    role: "Founder & CEO",
-                    bio: "B.Tech in Computer Science. Former employee at Vodafone. Currently leading Trio as Founder & CEO, driving innovation and sustainable solutions.",
-                    img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1974&auto=format&fit=crop"
-                  },
-                  {
-                    name: "Somnath Das",
-                    role: "Founder & COO",
-                    bio: "M.A. graduate. Former employee at Uber. Now serving as Founder & COO of Trio, ensuring smooth operations and impactful strategies.",
-                    img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=2070&auto=format&fit=crop"
-                  }
-                ].map(leader => (
-                  <div key={leader.name} style={{ background: '#121915', border: `1px solid ${BORDER}`, borderRadius: 40, padding: 60, textAlign: 'center', transition: 'all 0.3s' }}>
-                    <div style={{ width: 120, height: 120, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 32px', border: `4px solid ${ACCENT}22` }}>
-                      <img src={leader.img} alt={leader.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                    <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.75rem', fontWeight: 700, color: '#fff', marginBottom: 8 }}>{leader.name}</h3>
-                    <div style={{ fontFamily: "'Outfit', sans-serif", color: ACCENT, fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 24 }}>{leader.role}</div>
-                    <p style={{ fontFamily: "'Outfit', sans-serif", color: TEXT_DIM, fontSize: '0.95rem', lineHeight: 1.6 }}>{leader.bio}</p>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {WHY_SLIDES.map((_, i) => (
+                          <div
+                            key={i}
+                            onClick={() => setWhySlide(i)}
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: '50%',
+                              background: whySlide === i ? '#84cc16' : 'rgba(255,255,255,0.2)',
+                              cursor: 'pointer',
+                              transition: 'all 0.3s'
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </motion.div>
                   </div>
-                ))}
-              </div>
-            </div>
 
-            {/* 6. IMPACT */}
-            <div>
-              <div style={{ textAlign: 'center', marginBottom: 80 }}>
-                <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '3rem', fontWeight: 800, color: '#fff', marginBottom: 20 }}>Our <span style={{ color: ACCENT }}>Impact</span></h2>
-                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.2rem', color: TEXT_DIM, maxWidth: 640, margin: '0 auto' }}>
-                  We are dedicated to accelerating a clean, equitable future by integrating technology and sustainability in every journey.
+                  {/* Right side: Professor Profile */}
+                  <div style={{ textAlign: 'right' }}>
+                    <motion.div
+                      initial={{ opacity: 0, x: 40 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 1, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                      style={{ position: 'relative', display: 'inline-block' }}
+                    >
+                      {/* Image Container with Gradient Background */}
+                      <div style={{
+                        width: '420px',
+                        height: '520px',
+                        background: 'radial-gradient(circle at center, rgba(0, 255, 136, 0.08) 0%, transparent 70%)',
+                        borderRadius: '20px',
+                        overflow: 'hidden',
+                        position: 'relative',
+                      }}>
+                        <img
+                          src={professorImg}
+                          alt="David M. Johnson"
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'contain',
+                            objectPosition: 'bottom center',
+                            filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.5))'
+                          }}
+                        />
+                      </div>
+
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.8, delay: 0.8 }}
+                        style={{ marginTop: 32 }}
+                      >
+                        <h4 style={{
+                          fontSize: '3.2rem',
+                          fontWeight: 800,
+                          color: '#ffffff',
+                          textTransform: 'uppercase',
+                          letterSpacing: '-0.02em',
+                          marginBottom: 4,
+                          background: 'linear-gradient(180deg, #FFFFFF 0%, #B0B0B0 45%, #606060 100%)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                        }}>
+                          DAVID M. JOHNSON
+                        </h4>
+                        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+                          ENVIRONMENT PROFESSOR AT HARVARD
+                        </p>
+                      </motion.div>
+                    </motion.div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* CTA SECTION */}
+            <section style={{ padding: '100px 48px 0', background: `linear-gradient(to bottom, #0a0e0c, ${SURFACE})`, position: 'relative', overflow: 'hidden', textAlign: 'center' }}>
+              <div style={{ maxWidth: 1000, margin: '0 auto', position: 'relative', zIndex: 10 }}>
+                <div style={{
+                  color: TEXT_DIM,
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.2em',
+                  textTransform: 'uppercase',
+                  marginBottom: 24
+                }}>
+                  FIND STATION NEAR IN YOUR LOCATION
+                </div>
+
+                <h2 style={{
+                  fontFamily: '"Orbitron", sans-serif',
+                  fontSize: 'clamp(2rem, 4.2vw, 3.8rem)',
+                  fontWeight: 900,
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  color: '#fff',
+                  textDecoration: 'none',
+                  textShadow: '0 4px 24px rgba(0,0,0,0.5)',
+                  marginBottom: 48,
+                  lineHeight: 1.2
+                }}>
+                  <span style={{ color: '#FFFFFF', fontWeight: 900 }}>ENGINEERING THE FUTURE OF</span><br />
+                  <span style={{
+                    background: `linear-gradient(90deg, ${ACCENT} 0%, #00FF88 100%)`,
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    fontWeight: 900
+                  }}>EMISSION-FREE MOBILITY.</span>
+                </h2>
+
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 80 }}>
+                  <button className="btn-accent" onClick={() => navigate('find-stations')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 36px', fontSize: '0.95rem', fontWeight: 700 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    FIND STATION
+                  </button>
+                </div>
+              </div>
+
+              {/* 3D Illustration — Aggressive attachment */}
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', position: 'relative', zIndex: 5, marginTop: '-20px', marginBottom: 0, lineHeight: 0 }}>
+                <img src={hub3d} alt="EV Station 3D" style={{ maxWidth: '100%', width: 1100, objectFit: 'contain', display: 'block', margin: '0 auto', filter: 'drop-shadow(0 -20px 40px rgba(0,0,0,0.6))', marginBottom: '-12px', verticalAlign: 'bottom' }} />
+                {/* Subtle glow behind the station */}
+                <div style={{ position: 'absolute', bottom: '10%', left: '50%', transform: 'translate(-50%, 0)', width: '60%', height: '40%', background: `${ACCENT}20`, filter: 'blur(100px)', zIndex: -1, borderRadius: '50%' }} />
+              </div>
+            </section>
+          </motion.div>
+        )}
+
+        {page === 'find-stations' && (
+          <motion.section
+            key="find-stations"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            style={{ background: BG, paddingTop: '72px', overflow: 'hidden' }}
+          >
+            <iframe
+              src="/find-stations.html"
+              style={{ width: '100%', height: '1100px', border: 'none' }}
+              title="Find Charging Stations"
+              scrolling="no"
+            />
+          </motion.section>
+        )}
+
+        {/* FOOTER — EXACT REPLICA OF REFERENCE IMAGE */}
+
+        {page === 'privacy-policy' && (
+          <motion.div
+            key="privacy"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <section style={{ background: BG, paddingTop: '120px', paddingBottom: '100px', minHeight: '80vh' }}>
+              <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 40px' }}>
+                <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: 40, color: '#fff' }}>Privacy Policy</h1>
+                <div style={{ color: TEXT_DIM, lineHeight: 1.8, fontSize: '1.05rem' }}>
+                  <p style={{ marginBottom: 32, fontStyle: 'italic', borderLeft: `4px solid ${ACCENT}`, paddingLeft: 24 }}>At Trio, your privacy is important to us. This Privacy Policy document contains types of information that is collected and recorded by us and how we use it.</p>
+                  <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>1. Information We Collect</h2>
+                  <p style={{ marginBottom: 24 }}>We may collect personal identification information such as name, email address, phone number, etc., when users visit our site, register, or interact with our services.</p>
+                  <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>2. How We Use Your Information</h2>
+                  <p style={{ marginBottom: 24 }}>We use the information we collect in various ways, including to:</p>
+                  <ul style={{ marginBottom: 24, paddingLeft: 20 }}>
+                    {['Improve our website and services', 'Send periodic emails and updates', 'Respond to customer service requests', 'Personalize user experience'].map(item => <li key={item} style={{ marginBottom: 10 }}>{item}</li>)}
+                  </ul>
+                  <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>3. Data Protection</h2>
+                  <p style={{ marginBottom: 24 }}>We adopt appropriate data collection, storage, and processing practices and security measures to protect against unauthorized access, alteration, disclosure or destruction of your personal information.</p>
+                  <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>4. Sharing Your Information</h2>
+                  <p style={{ marginBottom: 24 }}>We do not sell, trade, or rent users' personal identification information to others. We may share generic aggregated demographic information not linked to any personal identification information.</p>
+                </div>
+              </div>
+            </section>
+          </motion.div>
+        )}
+
+        {page === 'terms-conditions' && (
+          <motion.div
+            key="terms"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <section style={{ background: BG, paddingTop: '120px', paddingBottom: '100px', minHeight: '80vh' }}>
+              <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 40px' }}>
+                <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: 40, color: '#fff' }}>Terms & Conditions</h1>
+                <div style={{ color: TEXT_DIM, lineHeight: 1.8, fontSize: '1.05rem' }}>
+                  <p style={{ marginBottom: 32, fontStyle: 'italic', borderLeft: `4px solid ${ACCENT}`, paddingLeft: 24 }}>Welcome to Trio. These terms and conditions outline the rules and regulations for the use of our website and services.</p>
+                  <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>1. Acceptance of Terms</h2>
+                  <p style={{ marginBottom: 24 }}>By accessing this website we assume you accept these terms and conditions. Do not continue to use Trio if you do not agree to all the terms stated on this page.</p>
+                  <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>2. Intellectual Property Rights</h2>
+                  <p style={{ marginBottom: 24 }}>Other than the content you own, under these Terms, Trio and/or its licensors own all the intellectual property rights and materials contained in this website.</p>
+                  <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>3. Restrictions</h2>
+                  <p style={{ marginBottom: 24 }}>You are specifically restricted from all of the following:</p>
+                  <ul style={{ marginBottom: 24, paddingLeft: 20 }}>
+                    {['Publishing any website material in any other media', 'Selling, sublicensing and/or commercializing any website material', 'Publicly performing and/or showing any website material', 'Using this website in any way that is or may be damaging to this website'].map(item => <li key={item} style={{ marginBottom: 10 }}>{item}</li>)}
+                  </ul>
+                </div>
+              </div>
+            </section>
+          </motion.div>
+        )}
+
+        {page === 'refund-policy' && (
+          <motion.div
+            key="refund"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <section style={{ background: BG, paddingTop: '120px', paddingBottom: '100px', minHeight: '80vh' }}>
+              <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 40px' }}>
+                <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: 40, color: '#fff' }}>Refund Policy</h1>
+                <div style={{ color: TEXT_DIM, lineHeight: 1.8, fontSize: '1.05rem' }}>
+                  <p style={{ marginBottom: 32, fontStyle: 'italic', borderLeft: `4px solid ${ACCENT}`, paddingLeft: 24 }}>At Trio, we strive to ensure satisfaction with our services. If you're not entirely satisfied, we're here to help with a fair refund policy.</p>
+                  <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>1. Eligibility for Refunds</h2>
+                  <p style={{ marginBottom: 24 }}>To be eligible for a refund, your request must be made within 7 days of service purchase and should include a valid reason for the request.</p>
+                  <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>2. Non-refundable Cases</h2>
+                  <p style={{ marginBottom: 24 }}>The following cases are generally ineligible for a refund:</p>
+                  <ul style={{ marginBottom: 24, paddingLeft: 20 }}>
+                    {['Service already delivered and accepted by user', 'Customized or personalized fleet solutions', 'Issues arising from misuse or third-party integrations'].map(item => <li key={item} style={{ marginBottom: 10 }}>{item}</li>)}
+                  </ul>
+                  <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>3. Refund Process</h2>
+                  <p style={{ marginBottom: 24 }}>Once your request is approved, refunds will be processed to the original method of payment within 5–7 business days.</p>
+                </div>
+              </div>
+            </section>
+          </motion.div>
+        )}
+
+        {page === 'about-us' && (
+          <motion.div
+            key="about"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <section style={{ background: BG, color: TEXT, paddingTop: '100px', paddingBottom: '120px' }}>
+              {/* 1. HERO */}
+              <div style={{ textAlign: 'center', marginBottom: 120, padding: '0 24px' }}>
+                <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(3rem, 7vw, 4.5rem)', fontWeight: 800, color: '#fff', marginBottom: 20, letterSpacing: '-0.04em', lineHeight: 1.1 }}>
+                  Our Commitment to <br />
+                  <span style={{ color: ACCENT, fontSize: '0.8em' }}>Communities</span>
+                </h1>
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.25rem', color: TEXT_DIM, maxWidth: 600, margin: '0 auto', lineHeight: 1.6, fontWeight: 400 }}>
+                  Empowering local communities through clean technology and <br /> sustainable practices.
                 </p>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24 }}>
-                {[
-                  { icon: 'M23 6l-9.5 9.5-5-5L1 18', title: "EV-First Fleet", desc: "Deploying electric vehicles and hybrid transport solutions across all regions by 2026." },
-                  { icon: 'M12 2L5 9h4v12h6V9h4L12 2z', title: "Commitment to Nature", desc: "Investing in reforestation and renewable projects to exceed net-zero impact by 2030." },
-                  { icon: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z', title: "Sustainable Smart Roads", desc: "Implementing road-based energy harvesting to power streetlights and EV charging stations." },
-                  { icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75', title: "Innovation & Inclusion", desc: "Fostering R&D and skill-building programs to empower rural communities in clean tech adoption." }
-                ].map((item, i) => (
-                  <div key={i} style={{ background: BG, border: `1px solid ${BORDER}`, borderTop: `4px solid ${ACCENT}`, borderRadius: 16, padding: 32, transition: 'transform 0.3s' }}>
-                    <div style={{ color: ACCENT, marginBottom: 20 }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={item.icon}></path></svg>
-                    </div>
-                    <h4 style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.2rem', fontWeight: 700, color: '#fff', marginBottom: 16 }}>{item.title}</h4>
-                    <p style={{ fontFamily: "'Outfit', sans-serif", color: TEXT_DIM, fontSize: '0.88rem', lineHeight: 1.6 }}>{item.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
 
-      {page === 'blog' && <BlogPage />}
+              <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px' }}>
+                {/* 2. VISION */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 60, alignItems: 'center', marginBottom: 120 }}>
+                  <div style={{ background: SURFACE, borderRadius: 32, overflow: 'hidden', border: `1px solid ${BORDER}`, height: 420 }}>
+                    <img src="/sustainability.png" alt="Sustainability" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+                      <div style={{ width: 40, height: 2, background: ACCENT, borderRadius: 1 }} />
+                      <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '2.5rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>Our Vision</h2>
+                    </div>
+                    <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.1rem', color: TEXT_DIM, lineHeight: 1.8, fontWeight: 400 }}>
+                      Trio envisions a world where every ride and every delivery contributes to a healthier planet. Our vision is to eliminate pollution and carbon emissions by creating a fully electric ecosystem for both personal mobility and logistics. We aspire to lead the transformation of the automotive and logistics industries, making sustainable, smart, and connected transportation accessible to all. By combining innovation, responsibility, and care for nature, we aim to build a future where progress and the environment move together in harmony.
+                    </p>
+                  </div>
+                </div>
+
+                {/* 3. MISSION */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: 60, alignItems: 'center', marginBottom: 120 }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+                      <div style={{ width: 40, height: 2, background: ACCENT, borderRadius: 1 }} />
+                      <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '2.2rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>Our Mission</h2>
+                    </div>
+                    <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1rem', color: TEXT_DIM, lineHeight: 1.7, marginBottom: 20 }}>
+                      At Trio, our mission is to redefine the way people move and businesses operate. We are committed to:
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      {[
+                        "Developing electric cars that are eco-friendly, stylish, reliable, and affordable for everyday use.",
+                        "Revolutionizing logistics with 100% electric fleets that reduce congestion, minimize noise, and lower emissions.",
+                        "Supporting sustainability by adopting green practices in design, manufacturing, and operations for healthier cities.",
+                        "Driving innovation through smart technology, renewable energy integration, and continuous performance improvements.",
+                        "Empowering communities by raising awareness about eco-friendly mobility and promoting nature-first choices.",
+                        "Building a connected future where technology, people, and the environment coexist seamlessly."
+                      ].map((item, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                          <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1px solid ${ACCENT}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
+                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="4"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                          </div>
+                          <span style={{ fontFamily: "'Outfit', sans-serif", color: TEXT_DIM, fontSize: '0.9rem', lineHeight: 1.4 }}>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p style={{ fontFamily: "'Outfit', sans-serif", marginTop: 24, paddingLeft: 20, borderLeft: `2px solid ${ACCENT}33`, fontStyle: 'italic', color: TEXT_DIM, fontSize: '0.9rem' }}>
+                      Our purpose is clear: to protect nature, reduce pollution, and create a sustainable legacy where clean mobility becomes the heartbeat of modern living.
+                    </p>
+                  </div>
+                  <div style={{ background: SURFACE, borderRadius: 32, overflow: 'hidden', border: `1px solid ${BORDER}`, height: 500 }}>
+                    <img src="/energy.png" alt="Energy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                </div>
+
+                {/* 4. STORY */}
+                <div style={{ maxWidth: 800, margin: '0 auto 160px', textAlign: 'center' }}>
+                  <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '3rem', fontWeight: 800, color: '#fff', marginBottom: 12 }}>Our <span style={{ color: ACCENT }}>Story</span></h2>
+                  <div style={{ width: 60, height: 2, background: ACCENT, margin: '0 auto 60px' }} />
+                  <div style={{ fontFamily: "'Outfit', sans-serif", color: TEXT_DIM, fontSize: '1.15rem', lineHeight: 1.8, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 32 }}>
+                    <p>Our journey began in the world of IT and telecom, where one of our founders worked on designing revenue models for Vodafone across Greece, Albania, and the UK. While building systems that directly impacted millions of customers, a realization struck — technology was advancing, but the hidden cost was environmental damage caused by emissions, vibrations, and unsustainable operations.</p>
+                    <p>With a background in Computer Science and years of experience in telecom, the seed of an idea was planted: how can technology and business models be re-imagined to serve both people and the planet? This vision led to an entrepreneurial journey beginning in 2018, exploring eco-friendly solutions and sustainability-driven startups.</p>
+                    <p>In 2022, the concept of clean transportation took shape. Starting small in Pune with just two leased vehicles, we tested the market, even driving the cars ourselves to understand a driver's real challenges. Those early months gave us invaluable insights into operations, payment irregularities, and the struggles drivers face daily. From there, we expanded to Kolkata, scaling our fleet and building strong foundations.</p>
+
+                    <div style={{ padding: '60px 0', textAlign: 'center' }}>
+                      <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '2.2rem', fontWeight: 500, color: ACCENT, fontStyle: 'italic', lineHeight: 1.4, letterSpacing: '-0.01em' }}>
+                        "We're not just offering transport — we're driving a transition to greener, smarter mobility for all."
+                      </h3>
+                    </div>
+
+                    <p>In July 2024, after two years of groundwork, we officially registered Trio Evolution India Pvt. Ltd. — named to represent the three founders who came together from IT, transportation, and mechanical engineering backgrounds. Though one co-founder eventually moved on, the vision remained strong: to revolutionize mobility through sustainability.</p>
+                    <p>We shifted from B2C to a B2B model, partnering with Mahindra Logistics to deploy EV fleets for large enterprises. Soon after, we began serving industry leaders like TCS, Capgemini, Cognizant, KPMG, and Indigo — expanding our fleet and proving that sustainable transport can meet the toughest corporate demands.</p>
+                    <p>Recognizing that fleet growth is incomplete without infrastructure, we took the bold step of becoming Kolkata's first fleet owner to build a private EV charging hub in New Town, right at the heart of the city's IT corridor. This hub, set to be completed by August 2025, not only powers our fleet but also supports smaller operators, ensuring accessibility and affordability for all.</p>
+                    <p>Today, our services span electric vehicle leasing, fleet management, smart charging infrastructure, and employee transportation solutions. From humble beginnings to city-wide impact, our story is proof that a vision backed by persistence can shape the future of mobility. As we move forward, our commitment remains the same: to empower businesses and communities to progress without compromising our planet. This is our story — and we're just getting started.</p>
+                  </div>
+                </div>
+
+                {/* 5. LEADERSHIP */}
+                <div style={{ marginBottom: 160 }}>
+                  <div style={{ textAlign: 'center', marginBottom: 80 }}>
+                    <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '3rem', fontWeight: 800, color: '#fff', marginBottom: 20 }}>Leadership <span style={{ color: ACCENT }}>Team</span></h2>
+                    <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.2rem', color: TEXT_DIM, maxWidth: 640, margin: '0 auto' }}>
+                      The minds behind our mission to transform transportation through clean energy and community-driven innovation.
+                    </p>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, maxWidth: 1000, margin: '0 auto' }}>
+                    {[
+                      {
+                        name: "Subhash Kumar",
+                        role: "Founder & CEO",
+                        bio: "B.Tech in Computer Science. Former employee at Vodafone. Currently leading Trio as Founder & CEO, driving innovation and sustainable solutions.",
+                        img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1974&auto=format&fit=crop"
+                      },
+                      {
+                        name: "Somnath Das",
+                        role: "Founder & COO",
+                        bio: "M.A. graduate. Former employee at Uber. Now serving as Founder & COO of Trio, ensuring smooth operations and impactful strategies.",
+                        img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=2070&auto=format&fit=crop"
+                      }
+                    ].map(leader => (
+                      <div key={leader.name} style={{ background: '#121915', border: `1px solid ${BORDER}`, borderRadius: 40, padding: 60, textAlign: 'center', transition: 'all 0.3s' }}>
+                        <div style={{ width: 120, height: 120, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 32px', border: `4px solid ${ACCENT}22` }}>
+                          <img src={leader.img} alt={leader.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </div>
+                        <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.75rem', fontWeight: 700, color: '#fff', marginBottom: 8 }}>{leader.name}</h3>
+                        <div style={{ fontFamily: "'Outfit', sans-serif", color: ACCENT, fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 24 }}>{leader.role}</div>
+                        <p style={{ fontFamily: "'Outfit', sans-serif", color: TEXT_DIM, fontSize: '0.95rem', lineHeight: 1.6 }}>{leader.bio}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 6. IMPACT */}
+                <div>
+                  <div style={{ textAlign: 'center', marginBottom: 80 }}>
+                    <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '3rem', fontWeight: 800, color: '#fff', marginBottom: 20 }}>Our <span style={{ color: ACCENT }}>Impact</span></h2>
+                    <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.2rem', color: TEXT_DIM, maxWidth: 640, margin: '0 auto' }}>
+                      We are dedicated to accelerating a clean, equitable future by integrating technology and sustainability in every journey.
+                    </p>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24 }}>
+                    {[
+                      { icon: 'M23 6l-9.5 9.5-5-5L1 18', title: "EV-First Fleet", desc: "Deploying electric vehicles and hybrid transport solutions across all regions by 2026." },
+                      { icon: 'M12 2L5 9h4v12h6V9h4L12 2z', title: "Commitment to Nature", desc: "Investing in reforestation and renewable projects to exceed net-zero impact by 2030." },
+                      { icon: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z', title: "Sustainable Smart Roads", desc: "Implementing road-based energy harvesting to power streetlights and EV charging stations." },
+                      { icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75', title: "Innovation & Inclusion", desc: "Fostering R&D and skill-building programs to empower rural communities in clean tech adoption." }
+                    ].map((item, i) => (
+                      <div key={i} style={{ background: BG, border: `1px solid ${BORDER}`, borderTop: `4px solid ${ACCENT}`, borderRadius: 16, padding: 32, transition: 'transform 0.3s' }}>
+                        <div style={{ color: ACCENT, marginBottom: 20 }}>
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={item.icon}></path></svg>
+                        </div>
+                        <h4 style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.2rem', fontWeight: 700, color: '#fff', marginBottom: 16 }}>{item.title}</h4>
+                        <p style={{ fontFamily: "'Outfit', sans-serif", color: TEXT_DIM, fontSize: '0.88rem', lineHeight: 1.6 }}>{item.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+          </motion.div>
+        )}
+
+        {page === 'blog' && (
+          <motion.div
+            key="blog"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <BlogPage />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <footer style={{ padding: '80px 88px 40px', background: SURFACE, borderTop: `1px solid ${BORDER}` }}>
         <div style={{ maxWidth: 1440, margin: '0 auto' }}>

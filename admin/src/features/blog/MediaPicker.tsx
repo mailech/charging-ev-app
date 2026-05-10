@@ -26,14 +26,16 @@ export function MediaPicker({ open, onClose, onSelect }: Props) {
 
     const handleFiles = async (files: FileList | null) => {
         if (!files || files.length === 0) return;
+        let successes = 0;
         for (const file of Array.from(files)) {
             try {
                 await upload.mutateAsync({ file });
+                successes++;
             } catch {
                 toast.error(`Upload failed: ${file.name}`);
             }
         }
-        toast.success('Upload complete');
+        if (successes > 0) toast.success(`Upload complete: ${successes} file(s)`);
     };
 
     return (
