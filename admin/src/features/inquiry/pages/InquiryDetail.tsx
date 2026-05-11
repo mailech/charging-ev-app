@@ -12,7 +12,6 @@ import { Avatar } from '@/components/ui/Avatar';
 import { StatusBadge } from '../StatusBadge';
 import {
     useAddNoteMutation,
-    useAdminUsersQuery,
     useInquiryQuery,
     useSendReplyMutation,
     useUpdateInquiryMutation,
@@ -36,7 +35,6 @@ export function InquiryDetailDrawer({ id, open, onClose }: Props) {
     const replyMutation = useSendReplyMutation(id ?? '');
     const autoReplyMutation = useSendInquiryAutoReplyMutation();
     const templatesQuery = useTemplatesQuery();
-    const adminsQuery = useAdminUsersQuery();
 
     const inquiry = query.data;
     const activeTemplate = (templatesQuery.data ?? []).find((t) => t.active);
@@ -86,15 +84,34 @@ export function InquiryDetailDrawer({ id, open, onClose }: Props) {
                 </div>
             )}
 
+            {!inquiry && !query.isLoading && query.isError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
+                    <p className="mb-2 font-semibold">Could not load this inquiry.</p>
+                    <p className="mb-3 text-red-600">
+                        {(query.error as { response?: { data?: { message?: string } }; message?: string })
+                            ?.response?.data?.message ??
+                            (query.error as { message?: string })?.message ??
+                            'Unknown error'}
+                    </p>
+                    <Button size="sm" variant="outline" onClick={() => query.refetch()}>
+                        Retry
+                    </Button>
+                </div>
+            )}
+
+            {!inquiry && !query.isLoading && !query.isError && id && (
+                <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
+                    Inquiry not found.
+                </div>
+            )}
+
             {inquiry && (
                 <div className="space-y-5">
-                    <section className="rounded-xl border border-slate-200 bg-white p-5">
-                        <div className="flex items-start justify-between gap-4">
-                            <div className="space-y-3 text-sm">
-                                <p className="text-xs font-semibold text-slate-900">
-                                    Contact Information
-                                </p>
-                                <div className="space-y-2.5">
+                    <section className="rounded-xl border border-slate-200 bg-white p-4">
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                                <Avatar name={inquiry.name} size="md" />
+                                <div className="space-y-2 text-sm">
                                     <ContactRow icon={<Mail className="h-4 w-4" />}>
                                         <a
                                             href={`mailto:${inquiry.email}`}
@@ -113,31 +130,7 @@ export function InquiryDetailDrawer({ id, open, onClose }: Props) {
                                     </ContactRow>
                                 </div>
                             </div>
-                            <div className="flex flex-col items-center gap-2">
-                                <Avatar name={inquiry.name} size="lg" />
-                                <span className="max-w-[88px] text-center text-[11px] text-slate-500">
-                                    {inquiry.name}
-                                </span>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section className="rounded-xl border border-slate-200 bg-white p-5">
-                        <p className="mb-2 text-xs font-semibold text-slate-900">
-                            {inquiry.subject}
-                        </p>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                            Message
-                        </p>
-                        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
-                            {inquiry.message}
-                        </p>
-                    </section>
-
-                    <section className="rounded-xl border border-slate-200 bg-white p-5">
-                        <p className="mb-4 text-xs font-semibold text-slate-900">Inquiry Details</p>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
+                            <div className="w-[115px] shrink-0">
                                 <label className="mb-1.5 block text-xs font-medium text-slate-600">
                                     Status
                                 </label>
@@ -162,36 +155,19 @@ export function InquiryDetailDrawer({ id, open, onClose }: Props) {
                                     ))}
                                 </Select>
                             </div>
-                            <div>
-                                <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                                    Assigned To
-                                </label>
-                                <Select
-                                    value={inquiry.assignedToId ?? ''}
-                                    onChange={(e) =>
-                                        updateMutation.mutate(
-                                            {
-                                                assignedToId: e.target.value || null,
-                                            },
-                                            {
-                                                onError: () =>
-                                                    toast.error('Could not update assignee'),
-                                                onSuccess: () =>
-                                                    toast.success('Assignee updated'),
-                                            },
-                                        )
-                                    }
-                                    disabled={updateMutation.isPending}
-                                >
-                                    <option value="">Unassigned</option>
-                                    {(adminsQuery.data ?? []).map((u) => (
-                                        <option key={u.id} value={u.id}>
-                                            {u.name ?? u.email}
-                                        </option>
-                                    ))}
-                                </Select>
-                            </div>
                         </div>
+                    </section>
+
+                    <section className="rounded-xl border border-slate-200 bg-white p-5">
+                        <p className="mb-2 text-xs font-semibold text-slate-900">
+                            {inquiry.subject}
+                        </p>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                            Message
+                        </p>
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                            {inquiry.message}
+                        </p>
                     </section>
 
                     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

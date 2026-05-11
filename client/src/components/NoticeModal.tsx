@@ -109,12 +109,24 @@ export function NoticeModal() {
                         {data.title}
                     </h3>
                     {data.imageUrl && (
-                        <img
-                            src={mediaUrl(data.imageUrl)}
-                            alt=""
-                            className="mt-4 rounded"
-                            style={imageStyle}
-                        />
+                        <div
+                            className="mt-4 flex"
+                            style={{
+                                justifyContent:
+                                    data.imageAlign === 'left'
+                                        ? 'flex-start'
+                                        : data.imageAlign === 'right'
+                                          ? 'flex-end'
+                                          : 'center',
+                            }}
+                        >
+                            <img
+                                src={mediaUrl(data.imageUrl)}
+                                alt=""
+                                className="rounded"
+                                style={imageStyle}
+                            />
+                        </div>
                     )}
                     {data.body && (
                         <div

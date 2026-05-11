@@ -15,10 +15,7 @@ interface Props<T extends string> {
 
 export function Tabs<T extends string>({ items, value, onChange, className }: Props<T>) {
     return (
-        <div
-            role="tablist"
-            className={cn('flex items-center gap-6 border-b border-slate-200', className)}
-        >
+        <div role="tablist" className={cn('flex flex-wrap items-center gap-2', className)}>
             {items.map((item) => {
                 const active = item.value === value;
                 const hasCount = typeof item.count === 'number';
@@ -30,19 +27,19 @@ export function Tabs<T extends string>({ items, value, onChange, className }: Pr
                         type="button"
                         onClick={() => onChange(item.value)}
                         className={cn(
-                            'group relative -mb-px inline-flex items-center gap-2 whitespace-nowrap border-b-2 pb-3 pt-1 text-xs font-semibold uppercase tracking-wider transition-colors',
+                            'group inline-flex items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors',
                             active
-                                ? 'border-emerald-500 text-emerald-600'
-                                : 'border-transparent text-slate-500 hover:text-slate-800',
+                                ? 'bg-slate-900 text-white'
+                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
                         )}
                     >
                         {item.label}
                         {hasCount && (
                             <span
                                 className={cn(
-                                    'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-[10px] font-semibold tabular-nums transition-colors',
+                                    'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-md px-1.5 text-[10px] font-semibold tabular-nums transition-colors',
                                     active
-                                        ? 'bg-emerald-500 text-white'
+                                        ? 'bg-slate-700 text-white'
                                         : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700',
                                 )}
                             >

@@ -22,12 +22,24 @@ export function NoticePreview({ notice }: { notice: Notice }) {
                         {notice.title || 'Notice'}
                     </h3>
                     {notice.imageUrl && (
-                        <img
-                            src={mediaUrl(notice.imageUrl)}
-                            alt=""
-                            className="mt-3 rounded"
-                            style={imageStyle}
-                        />
+                        <div
+                            className="mt-3 flex"
+                            style={{
+                                justifyContent:
+                                    notice.imageAlign === 'left'
+                                        ? 'flex-start'
+                                        : notice.imageAlign === 'right'
+                                          ? 'flex-end'
+                                          : 'center',
+                            }}
+                        >
+                            <img
+                                src={mediaUrl(notice.imageUrl)}
+                                alt=""
+                                className="rounded"
+                                style={imageStyle}
+                            />
+                        </div>
                     )}
                     {notice.body && (
                         <div
