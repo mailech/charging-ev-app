@@ -60,6 +60,14 @@ export default function StationsManager() {
             toast.error('Name + state required');
             return;
         }
+        if (!Number.isFinite(draft.lat) || draft.lat < -90 || draft.lat > 90) {
+            toast.error('Latitude must be between -90 and 90');
+            return;
+        }
+        if (!Number.isFinite(draft.lon) || draft.lon < -180 || draft.lon > 180) {
+            toast.error('Longitude must be between -180 and 180');
+            return;
+        }
         try {
             if (editing) {
                 await updateM.mutateAsync({ id: editing.id, input: draft });
@@ -69,8 +77,9 @@ export default function StationsManager() {
                 toast.success('Station added');
             }
             setDraftOpen(false);
-        } catch {
-            toast.error('Could not save station');
+        } catch (err) {
+            const e = err as { response?: { data?: { message?: string } }; message?: string };
+            toast.error(e?.response?.data?.message ?? e?.message ?? 'Could not save station');
         }
     };
 
@@ -240,6 +249,8 @@ export default function StationsManager() {
                             <Input
                                 type="number"
                                 step="any"
+                                min={-90}
+                                max={90}
                                 value={draft.lat}
                                 onChange={(e) =>
                                     setDraft({ ...draft, lat: Number(e.target.value) })
@@ -250,6 +261,8 @@ export default function StationsManager() {
                             <Input
                                 type="number"
                                 step="any"
+                                min={-180}
+                                max={180}
                                 value={draft.lon}
                                 onChange={(e) =>
                                     setDraft({ ...draft, lon: Number(e.target.value) })

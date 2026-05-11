@@ -153,8 +153,19 @@ export default function PostEditor() {
                             : 'Updated',
                 );
             return id ?? null;
-        } catch {
-            if (!opts.silent) toast.error('Save failed');
+        } catch (err) {
+            if (!opts.silent) {
+                const e = err as {
+                    response?: { status?: number; data?: { message?: string } };
+                    message?: string;
+                };
+                const status = e?.response?.status;
+                const serverMsg = e?.response?.data?.message;
+                toast.error(
+                    serverMsg ??
+                        (status ? `Save failed (HTTP ${status})` : e?.message ?? 'Save failed'),
+                );
+            }
             return null;
         }
     }
