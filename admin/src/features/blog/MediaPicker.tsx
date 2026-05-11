@@ -11,6 +11,7 @@ import {
 } from './hooks';
 import { mediaUrl } from './mediaUrl';
 import { toast } from '@/hooks/useToast';
+import { extractUploadError } from '@/lib/uploadError';
 
 interface Props {
     open: boolean;
@@ -31,8 +32,8 @@ export function MediaPicker({ open, onClose, onSelect }: Props) {
             try {
                 await upload.mutateAsync({ file });
                 successes++;
-            } catch {
-                toast.error(`Upload failed: ${file.name}`);
+            } catch (err) {
+                toast.error(`Upload failed: ${file.name} — ${extractUploadError(err)}`);
             }
         }
         if (successes > 0) toast.success(`Upload complete: ${successes} file(s)`);

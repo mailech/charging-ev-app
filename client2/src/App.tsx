@@ -21,9 +21,22 @@ const BORDER_STRONG = 'rgba(0,255,136,0.18)'
 const TEXT = '#F5F7F6'
 const TEXT_DIM = '#8C948F'
 
+// --- HOOKS ---
+function useIsMobile(breakpoint = 1024) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < breakpoint);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 // --- HUD CARD ---
 const HUDCard = ({ icon, title, value, unit, delay = 0.5 }: any) => (
   <motion.div
+    className="hero-hud-card"
     initial={{ opacity: 0, y: 16 }}
     animate={{
       opacity: 1,
@@ -73,10 +86,10 @@ const HUDCard = ({ icon, title, value, unit, delay = 0.5 }: any) => (
 
 // --- LIVE STAT (hero strip) ---
 const FlipStat = ({ label, value, trend }: any) => (
-  <div style={{ padding: '4px 0', paddingRight: 24 }}>
-    <div style={{ fontSize: '0.74rem', color: TEXT_DIM, fontWeight: 500, marginBottom: 6 }}>{label}</div>
-    <div style={{ fontSize: '1.6rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.02, color: TEXT }}>{value}</div>
-    <div style={{ fontSize: '0.7rem', color: ACCENT_SOFT, marginTop: 4, fontWeight: 500 }}>↗ {trend}</div>
+  <div className="flip-stat" style={{ padding: '4px 0', paddingRight: 24 }}>
+    <div className="stat-label" style={{ fontSize: '0.74rem', color: TEXT_DIM, fontWeight: 500, marginBottom: 6 }}>{label}</div>
+    <div className="stat-val" style={{ fontSize: '1.6rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.02, color: TEXT }}>{value}</div>
+    <div className="stat-trend" style={{ fontSize: '0.7rem', color: ACCENT_SOFT, marginTop: 4, fontWeight: 500 }}>↗ {trend}</div>
   </div>
 );
 
@@ -189,14 +202,20 @@ export default function App() {
   const [tooltip, setTooltip] = useState<{ name: string; x: number; y: number } | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState<'home' | 'find-stations' | 'privacy-policy' | 'terms-conditions' | 'refund-policy' | 'about-us' | 'blog'>('home');
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const isMobile = useIsMobile(1024);
   const [searchQuery, setSearchQuery] = useState('');
   const [connFilter, setConnFilter] = useState('Any');
   const [minPower, setMinPower] = useState(0);
   const [selectedStationId, setSelectedStationId] = useState('WB-410');
+  const [stationSheetOpen, setStationSheetOpen] = useState(false);
+  const [stationListExpanded, setStationListExpanded] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedClusterId, setSelectedClusterId] = useState<string | null>(null);
-  const [activeService, setActiveService] = useState(0);
-  const [showContactForm, setShowContactForm] = useState(false);
   const [whySlide, setWhySlide] = useState(0);
+  const [activeService, setActiveService] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -205,14 +224,23 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  const filteredStations = STATIONS.filter(s => {
+  // Auto-rotate Services showcase every 4s; timer resets on manual change
+  useEffect(() => {
+    if (!isMobile) return;
+    const t = setTimeout(() => {
+      setActiveService(prev => (prev + 1) % 4);
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [activeService, isMobile]);
+
+  const filteredStations = useMemo(() => STATIONS.filter(s => {
     const matchesQuery = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.state.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.id.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesConn = connFilter === 'Any' || s.conn === connFilter;
     const matchesPower = s.kw >= minPower;
     return matchesQuery && matchesConn && matchesPower;
-  });
+  }), [searchQuery, connFilter, minPower]);
 
   const selectedStation = STATIONS.find(s => s.id === selectedStationId) || STATIONS[0];
 
@@ -231,56 +259,78 @@ export default function App() {
       id: `cluster-${state}`,
       totalKw: stations.reduce((acc, curr) => acc + curr.kw, 0)
     }));
-  }, [filteredStations]);
+  }, [filteredStations, isMobile]);
 
   const focusedState = indiaGeo?.states.find(s =>
     searchQuery.length > 2 && s.name.toLowerCase().includes(searchQuery.toLowerCase())
   )?.name || null;
 
-  const selectedCluster = clusteredStations.find(c => c.id === selectedClusterId);
+  const selectedCluster = useMemo(
+    () => clusteredStations.find(c => c.id === selectedClusterId),
+    [clusteredStations, selectedClusterId]
+  );
 
   // PREMIUM CLUSTER POPUP
   const ClusterPopup = ({ cluster, onClose, onPick }: { cluster: any, onClose: () => void, onPick: (s: any) => void }) => (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+    <div
+      onClick={(e) => e.stopPropagation()}
       style={{
-        position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-        width: 380, background: '#0B0F0D', border: `1px solid ${ACCENT}`, borderRadius: 12,
-        padding: 32, zIndex: 100, pointerEvents: 'auto', boxShadow: `0 24px 64px rgba(0,0,0,0.8), 0 0 24px ${ACCENT}20`
+        position: isMobile ? 'fixed' : 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: isMobile ? 'calc(100vw - 32px)' : 380,
+        maxWidth: 380,
+        zIndex: 4000,
+        pointerEvents: 'auto',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
-        <div>
-          <div style={{ color: ACCENT, fontSize: '0.65rem', fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>{cluster.state} · CLUSTER</div>
-          <h3 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff', margin: 0, letterSpacing: -0.5 }}>{cluster.count} stations in this area</h3>
+    <motion.div
+      key="cluster-popup-inner"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+      style={{
+        width: '100%',
+        background: '#0B0F0D', border: `1px solid ${ACCENT}`, borderRadius: 14,
+        padding: isMobile ? 16 : 32,
+        boxShadow: `0 24px 64px rgba(0,0,0,0.8), 0 0 24px ${ACCENT}33`,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: isMobile ? 16 : 24, gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: ACCENT, fontSize: isMobile ? '0.58rem' : '0.65rem', fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: isMobile ? 6 : 8 }}>{cluster.state} · {cluster.count === 1 ? 'STATION' : 'CLUSTER'}</div>
+          <h3 style={{ fontSize: isMobile ? '1.05rem' : '1.6rem', fontWeight: 700, color: '#fff', margin: 0, letterSpacing: -0.5, lineHeight: 1.2 }}>{cluster.count === 1 ? cluster.stations[0].name : `${cluster.count} stations in this area`}</h3>
         </div>
-        <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', cursor: 'pointer', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+        <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', cursor: 'pointer', width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>×</button>
       </div>
 
-      <div style={{ display: 'flex', gap: 32, marginBottom: 24, paddingBottom: 24, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ display: 'flex', gap: isMobile ? 16 : 32, marginBottom: isMobile ? 14 : 24, paddingBottom: isMobile ? 14 : 24, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 700, color: ACCENT }}>{cluster.totalKw}<span style={{ fontSize: '0.75rem', fontWeight: 500, color: TEXT_DIM, marginLeft: 4 }}>kW total</span></div>
+          <div style={{ fontSize: isMobile ? '1rem' : '1.4rem', fontWeight: 700, color: ACCENT }}>{cluster.totalKw}<span style={{ fontSize: isMobile ? '0.62rem' : '0.75rem', fontWeight: 500, color: TEXT_DIM, marginLeft: 4 }}>kW total</span></div>
         </div>
         <div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fff' }}>{Math.round(cluster.totalKw / cluster.count)}<span style={{ fontSize: '0.75rem', fontWeight: 500, color: TEXT_DIM, marginLeft: 4 }}>kW avg</span></div>
+          <div style={{ fontSize: isMobile ? '1rem' : '1.4rem', fontWeight: 700, color: '#fff' }}>{Math.round(cluster.totalKw / cluster.count)}<span style={{ fontSize: isMobile ? '0.62rem' : '0.75rem', fontWeight: 500, color: TEXT_DIM, marginLeft: 4 }}>kW avg</span></div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 240, overflowY: 'auto' }} className="custom-scrollbar">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: isMobile ? 180 : 240, overflowY: 'auto' }} className="custom-scrollbar">
         {cluster.stations.map((s: any) => (
           <div key={s.id} onClick={() => onPick(s)} style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer',
-            padding: '12px 16px', borderRadius: 8, transition: 'all 0.2s'
-          }} onMouseEnter={(e: any) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'} onMouseLeave={(e: any) => e.currentTarget.style.background = 'transparent'}>
-            <div>
-              <div style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 600 }}>{s.name}</div>
-              <div style={{ color: TEXT_DIM, fontSize: '0.7rem' }}>{s.id}</div>
+            padding: isMobile ? '8px 10px' : '12px 16px', borderRadius: 8, transition: 'all 0.2s'
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ color: '#fff', fontSize: isMobile ? '0.82rem' : '0.9rem', fontWeight: 600 }}>{s.name}</div>
+              <div style={{ color: TEXT_DIM, fontSize: isMobile ? '0.62rem' : '0.7rem' }}>{s.id}</div>
             </div>
-            <div style={{ color: ACCENT, fontWeight: 700, fontSize: '0.9rem' }}>{s.kw} kW</div>
+            <div style={{ color: ACCENT, fontWeight: 700, fontSize: isMobile ? '0.82rem' : '0.9rem' }}>{s.kw} kW</div>
           </div>
         ))}
       </div>
     </motion.div>
+    </div>
   );
 
   // Map Component for reuse
@@ -311,33 +361,18 @@ export default function App() {
           const [x, y] = indiaGeo.project(c.lon, c.lat);
           if (isNaN(x) || isNaN(y)) return null;
 
-          const isClusterSelected = c.id === selectedClusterId;
-          const isSingle = c.count === 1;
-
           return (
-            <motion.g
+            <g
               key={c.id}
-              initial={{ scale: 0 }} animate={{ scale: 1 }}
-              onClick={(e) => { e.stopPropagation(); isSingle ? setSelectedStationId(c.stations[0].id) : setSelectedClusterId(c.id); }}
+              onClick={(e) => { e.stopPropagation(); setSelectedClusterId(c.id); }}
               style={{ cursor: 'pointer' }}
             >
-              {/* CLUSTER MARKER */}
-              {!isSingle ? (
-                <>
-                  <circle cx={x} cy={y} r={6} fill="#0B0F0D" stroke={ACCENT} strokeWidth="1" />
-                  <circle cx={x} cy={y} r={8} stroke={ACCENT} strokeWidth="0.5" fill="none" opacity="0.3">
-                    <animate attributeName="r" from="6" to="12" dur="2s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" from="0.3" to="0" dur="2s" repeatCount="indefinite" />
-                  </circle>
-                  <text x={x} y={y} dy="2.2" textAnchor="middle" fill="#fff" fontSize="5" fontWeight="700">{c.count}</text>
-                </>
-              ) : (
-                <>
-                  <circle cx={x} cy={y} r={4} fill="#0B0F0D" stroke={ACCENT} strokeWidth="0.8" />
-                  <path d={`M ${x} ${y - 2.5} L ${x - 1.5} ${y + 0.5} L ${x} ${y + 0.5} L ${x} ${y + 2.5} L ${x + 1.5} ${y - 0.5} L ${x} ${y - 0.5} Z`} fill={ACCENT} />
-                </>
-              )}
-            </motion.g>
+              {/* MARKER — static cyan glow + centered bolt (uniform style across all stations) */}
+              <circle cx={x} cy={y} r={9.5} fill="#5EC8FF" opacity={0.08} />
+              <circle cx={x} cy={y} r={7} fill="none" stroke="#5EC8FF" strokeWidth="0.35" opacity={0.4} />
+              <circle cx={x} cy={y} r={5.5} fill="#0B1620" stroke="#5EC8FF" strokeWidth={0.8} style={{ filter: `drop-shadow(0 0 2.5px #5EC8FF)` }} />
+              <path d={`M ${x + 0.4} ${y - 2.4} L ${x - 1.6} ${y + 0.3} L ${x - 0.2} ${y + 0.3} L ${x - 0.6} ${y + 2.4} L ${x + 1.6} ${y - 0.2} L ${x + 0.2} ${y - 0.2} L ${x + 0.8} ${y - 2.4} Z`} fill="#5EC8FF" />
+            </g>
           );
         })}
       </svg>
@@ -537,6 +572,56 @@ export default function App() {
         .bracket-bl { bottom: 10px; left: 10px; border-right: none; border-top: none; }
         .bracket-br { bottom: 10px; right: 10px; border-left: none; border-top: none; }
 
+        :root {
+          --side-padding: 88px;
+        }
+
+        @media (max-width: 1024px) {
+          :root {
+            --side-padding: 24px;
+          }
+        }
+
+        .mobile-menu-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(11,15,13,0.98);
+          backdrop-filter: blur(20px);
+          z-index: 2000;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 32px;
+          padding: 40px;
+        }
+
+        .mobile-menu-link {
+          font-family: 'Inter', sans-serif;
+          font-size: 1.25rem;
+          font-weight: 500;
+          color: ${TEXT};
+          text-decoration: none;
+          letter-spacing: -0.01em;
+          padding: 6px 16px;
+        }
+        .mobile-menu-link:active { color: ${ACCENT}; }
+
+        .menu-toggle {
+          display: none;
+          background: none;
+          border: none;
+          color: ${TEXT};
+          cursor: pointer;
+          padding: 8px;
+          z-index: 2100;
+        }
+
+        @media (max-width: 1024px) {
+          .menu-toggle { display: flex !important; align-items: center; justify-content: center; }
+          .desktop-nav { display: none !important; }
+        }
+
         /* Pulse dot ring — subtle */
         @keyframes pulse-ring { 0% { transform: scale(1); opacity: 0.55; } 100% { transform: scale(2.2); opacity: 0; } }
         .pulse-dot { position: relative; }
@@ -627,39 +712,193 @@ export default function App() {
         .loader-bolt { display: none; }
 
         @media (max-width: 1100px) {
-          .synapse-grid { grid-template-columns: 1fr 1fr; }
-          .core-col { grid-column: 1 / span 2; grid-row: 3; }
-          .module-nw { grid-column: 1; grid-row: 1; }
-          .module-ne { grid-column: 2; grid-row: 1; }
-          .module-sw { grid-column: 1; grid-row: 2; }
-          .module-se { grid-column: 2; grid-row: 2; }
+          .synapse-grid { grid-template-columns: 1fr; gap: 32px; }
+          .core-col { grid-column: 1; grid-row: 5; min-height: 320px; }
+          .module-nw { grid-row: 1; }
+          .module-ne { grid-row: 2; }
+          .module-sw { grid-row: 3; }
+          .module-se { grid-row: 4; }
+          
+          .hero-grid { grid-template-columns: 1fr !important; gap: 40px !important; text-align: center; padding-top: 40px !important; }
+          .hero-left { display: flex; flex-direction: column; align-items: center; }
+          .hero-btns { justify-content: center !important; }
+          .hero-right { order: -1; }
+
+          .why-grid { grid-template-columns: 1fr !important; gap: 64px !important; }
+          .footer-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+        }
+
+        /* ==================== MOBILE OVERRIDES ==================== */
+        @media (max-width: 1024px) {
+          /* HEADER / FOOTER LOGO */
+          .header-logo { height: 76px !important; }
+          .footer-logo { height: 60px !important; }
+          .menu-toggle { min-width: 44px; min-height: 44px; }
+
+          /* HERO — charger first (visual), then text + stats */
+          .hero-grid { padding-top: 24px !important; gap: 24px !important; }
+          .hero-right { order: -1 !important; }
+          .hero-right-charger { min-height: 220px !important; }
+          .hero-right-charger img { max-width: 260px !important; }
+          .hero-hud-left, .hero-hud-right { display: none !important; }
+          .hero-charging-lines { display: none !important; }
+          .hero-stat-strip { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; max-width: 100% !important; margin-top: 8px; }
+          .hero-stat-strip .flip-stat { padding-right: 6px !important; padding-left: 6px !important; }
+          .hero-stat-strip .flip-stat .stat-val { font-size: 1rem !important; }
+          .hero-stat-strip .flip-stat .stat-label { font-size: 0.62rem !important; }
+          .hero-stat-strip .flip-stat .stat-trend { font-size: 0.58rem !important; }
+
+          /* SERVICES SECTION */
+          .services-main-grid { grid-template-columns: 1fr !important; gap: 24px !important; margin-top: 8px !important; }
+          .services-img-container { height: 200px !important; margin-bottom: 18px !important; }
+          .services-img-container img { object-position: center center !important; }
+          .services-desc { padding-left: 0 !important; text-align: center; }
+          .services-desc p { max-width: 100% !important; }
+          .service-item { padding: 18px 16px !important; }
+          .service-item h4 { font-size: 1rem !important; }
+          .services-eyebrow { font-size: 0.65rem !important; }
+          .services-h2 { font-size: 2.4rem !important; }
+          .services-tag { font-size: 0.95rem !important; }
+
+          /* HERO TICKER hidden on mobile (overflow) */
+          .ticker { display: none !important; }
+
+          /* INDIA COVERAGE */
+          .network-inner { padding: 0 16px !important; }
+          .network-iframe-wrap { height: 380px !important; border-radius: 14px !important; }
+
+          /* WHY-EV */
+          .why-grid { gap: 40px !important; }
+          .why-slide-title { font-size: 1.25rem !important; margin-bottom: 20px !important; }
+          .why-slide-content { min-height: auto !important; }
+          .why-right-col { text-align: center !important; }
+          .prof-img-container { width: 100% !important; max-width: 320px !important; height: 360px !important; margin: 0 auto !important; }
+          .prof-name { font-size: 1.9rem !important; }
+          .prof-role { font-size: 0.7rem !important; }
+
+          /* CTA */
+          .cta-section { padding: 60px 20px 0 !important; }
+          .cta-section .cta-btn-row { gap: 12px !important; margin-bottom: 40px !important; }
+
+          /* POLICY PAGES */
+          .policy-section { padding-top: 96px !important; padding-bottom: 64px !important; }
+          .policy-inner { padding: 0 16px !important; }
+          .policy-title { font-size: 2rem !important; margin-bottom: 28px !important; }
+          .policy-inner h2 { font-size: 1.2rem !important; margin-top: 32px !important; }
+          .policy-inner p, .policy-inner ul { font-size: 0.95rem !important; }
+
+          /* ABOUT US */
+          .about-hero { margin-bottom: 64px !important; padding: 0 16px !important; }
+          .about-inner { padding: 0 16px !important; }
+          .vision-grid, .mission-grid { grid-template-columns: 1fr !important; gap: 28px !important; margin-bottom: 64px !important; }
+          .vision-img, .mission-img { height: 240px !important; border-radius: 20px !important; }
+          .about-section-title { font-size: 1.7rem !important; }
+          .story-block { margin-bottom: 80px !important; }
+          .story-quote { font-size: 1.35rem !important; padding: 32px 0 !important; }
+          .story-block h2 { font-size: 2rem !important; }
+          .leadership-block { margin-bottom: 80px !important; }
+          .leadership-grid { grid-template-columns: 1fr !important; gap: 20px !important; }
+          .leadership-card { padding: 36px 24px !important; border-radius: 24px !important; }
+          .leadership-card .leader-avatar { width: 96px !important; height: 96px !important; margin-bottom: 20px !important; }
+          .leadership-card h3 { font-size: 1.35rem !important; }
+          .impact-grid { grid-template-columns: 1fr 1fr !important; gap: 14px !important; }
+          .impact-card { padding: 20px !important; }
+          .impact-card h4 { font-size: 1rem !important; margin-bottom: 10px !important; }
+          .impact-card p { font-size: 0.82rem !important; }
+
+          /* FIND-STATIONS IFRAME */
+          .find-stations-iframe { height: 760px !important; }
+
+          /* FOOTER */
+          footer { padding-top: 56px !important; padding-bottom: 32px !important; }
+          .footer-bottom { flex-direction: column !important; gap: 8px !important; text-align: center !important; }
+        }
+
+        @media (max-width: 600px) {
+          .impact-grid { grid-template-columns: 1fr !important; }
+          .network-iframe-wrap { height: 320px !important; }
+          .find-stations-iframe { height: 660px !important; }
+          .hero-stat-strip { grid-template-columns: 1fr !important; gap: 14px !important; }
+          .hero-stat-strip .flip-stat { padding-right: 0 !important; border-bottom: 1px solid ${BORDER}; padding-bottom: 14px !important; }
+          .hero-stat-strip .flip-stat:last-child { border-bottom: none; padding-bottom: 0 !important; }
+          .hero-stat-strip .flip-stat .stat-val { font-size: 1.3rem !important; }
         }
       `}</style>
 
       {/* HEADER */}
-      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000, height: '72px', display: 'flex', alignItems: 'center', padding: '0 88px', background: 'rgba(11,15,13,0.78)', backdropFilter: 'blur(20px)', borderBottom: `1px solid ${BORDER}` }}>
-        <div style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => navigate('#top')}>
-          <img src={logo} alt="TRIO" style={{ height: '96px', width: 'auto', position: 'absolute', left: 0, objectFit: 'contain' }} />
+      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000, height: '72px', display: 'flex', alignItems: 'center', padding: '0 var(--side-padding)', background: 'rgba(11,15,13,0.78)', backdropFilter: 'blur(20px)', borderBottom: `1px solid ${BORDER}` }}>
+        <div style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => navigate('home')}>
+          <img className="header-logo" src={logo} alt="TRIO" style={{ height: '96px', width: 'auto', position: 'relative', objectFit: 'contain' }} />
         </div>
-        <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 32 }}>
+
+        {/* Desktop Nav */}
+        <div className="desktop-nav" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 32 }}>
           {[
             { label: 'Find stations', target: 'find-stations' },
             { label: 'About us', target: 'about-us' },
             { label: 'Blog', target: 'blog' },
           ].map(l => (
-            <a key={l.label} href="#" onClick={(e) => { e.preventDefault(); navigate(l.target); }} style={{ color: TEXT_DIM, textDecoration: 'none', fontSize: '0.88rem', fontWeight: 500, transition: 'color 200ms', cursor: 'pointer' }} onMouseEnter={(e: any) => e.target.style.color = TEXT} onMouseLeave={(e: any) => e.target.style.color = TEXT_DIM}>{l.label}</a>
+            <a key={l.label} href="#" onClick={(e) => { e.preventDefault(); navigate(l.target as any); }} style={{ color: TEXT_DIM, textDecoration: 'none', fontSize: '0.88rem', fontWeight: 500, transition: 'color 200ms', cursor: 'pointer' }} onMouseEnter={(e: any) => e.target.style.color = TEXT} onMouseLeave={(e: any) => e.target.style.color = TEXT_DIM}>{l.label}</a>
           ))}
         </div>
+
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center' }}>
-          <button
-            className="btn-accent"
-            onClick={() => setShowContactForm(true)}
-            style={{ padding: '12px 28px', fontSize: '0.88rem', fontWeight: 700 }}
-          >
-            Contact Sales
+          {!isMobile && (
+            <button
+              className="btn-accent"
+              onClick={() => setShowContactForm(true)}
+              style={{ padding: '12px 28px', fontSize: '0.88rem', fontWeight: 700 }}
+            >
+              Contact Sales
+            </button>
+          )}
+
+          <button className="menu-toggle" onClick={() => setShowMobileMenu(true)}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
           </button>
         </div>
       </nav>
+
+      <AnimatePresence>
+        {showMobileMenu && (
+          <motion.div
+            className="mobile-menu-overlay"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            <button
+              style={{ position: 'absolute', top: 24, right: 24, background: 'none', border: 'none', color: TEXT, cursor: 'pointer' }}
+              onClick={() => setShowMobileMenu(false)}
+            >
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+
+            {[
+              { label: 'Find stations', target: 'find-stations' },
+              { label: 'About us', target: 'about-us' },
+              { label: 'Blog', target: 'blog' },
+            ].map(l => (
+              <a
+                key={l.label}
+                href="#"
+                className="mobile-menu-link"
+                onClick={(e) => { e.preventDefault(); navigate(l.target as any); setShowMobileMenu(false); }}
+              >
+                {l.label}
+              </a>
+            ))}
+
+            <button
+              className="btn-accent"
+              onClick={() => { setShowContactForm(true); setShowMobileMenu(false); }}
+              style={{ marginTop: 20, padding: '16px 40px', fontSize: '1.1rem' }}
+            >
+              Contact Sales
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <NoticeModal />
       <ContactSalesForm
@@ -678,199 +917,589 @@ export default function App() {
           >
             {/* HERO — refined, premium */}
             <HeroCarousel fallback={
-            <section style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', paddingTop: 72, background: BG }}>
-              {/* Subtle ambient gradient */}
-              <div style={{ position: 'absolute', right: '-10%', top: '15%', width: 760, height: 760, background: `radial-gradient(circle, ${ACCENT_SOFT}22, transparent 60%)`, pointerEvents: 'none', borderRadius: '50%' }} />
+              isMobile ? (
+                <section style={{ position: 'relative', overflow: 'hidden', paddingTop: 92, paddingBottom: 40, background: BG, minHeight: 'calc(100vh - 72px)' }}>
+                  {/* Ambient gradients */}
+                  <div style={{ position: 'absolute', top: '12%', right: '-35%', width: 480, height: 480, background: `radial-gradient(circle, ${ACCENT_SOFT}28, transparent 65%)`, pointerEvents: 'none', borderRadius: '50%' }} />
+                  <div style={{ position: 'absolute', bottom: '-15%', left: '-35%', width: 420, height: 420, background: `radial-gradient(circle, ${ACCENT_SOFT}1c, transparent 70%)`, pointerEvents: 'none', borderRadius: '50%' }} />
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1.05fr 1fr', gap: 80, padding: '24px 88px 0', alignItems: 'center', minHeight: 'calc(100vh - 120px)', position: 'relative', zIndex: 5, maxWidth: 1440, margin: '0 auto' }}>
-
-                {/* LEFT COLUMN */}
-                <div>
-                  <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}>
-                    {/* Eyebrow */}
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, marginBottom: 32, padding: '6px 12px', border: `1px solid ${BORDER}`, borderRadius: 999, background: SURFACE }}>
+                  <div style={{ position: 'relative', zIndex: 5, padding: '0 20px' }}>
+                    {/* Live status pill */}
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5 }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '7px 14px', border: `1px solid ${BORDER_STRONG}`, borderRadius: 999, background: 'rgba(11,15,13,0.6)', backdropFilter: 'blur(10px)', marginBottom: 22 }}
+                    >
                       <span className="circle pulse-dot" style={{ width: 6, height: 6, background: ACCENT, color: ACCENT }} />
-                      <span className="eyebrow" style={{ color: ACCENT_SOFT, fontSize: '0.68rem' }}>Live network · {clock || '--:--:--'}</span>
-                    </div>
+                      <span className="mono" style={{ color: ACCENT, fontSize: '0.62rem', letterSpacing: '0.14em', fontWeight: 600 }}>LIVE · {clock || '--:--:--'}</span>
+                    </motion.div>
 
-                    {/* TITLE */}
-                    <h1 style={{ fontSize: 'clamp(2.4rem, 4.8vw, 4.8rem)', lineHeight: 1.02, marginBottom: 28, fontWeight: 600 }}>
-                      <motion.span initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} style={{ display: 'block' }}>
+                    {/* Title */}
+                    <h1 style={{ fontSize: '2.6rem', lineHeight: 1.0, marginBottom: 14, fontWeight: 700, letterSpacing: '-0.035em' }}>
+                      <motion.span initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} style={{ display: 'block' }}>
                         EV power,
                       </motion.span>
-                      <motion.span initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }} style={{ display: 'block', color: ACCENT }}>
+                      <motion.span initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }} style={{ display: 'block', color: ACCENT }}>
                         redefined.
                       </motion.span>
                     </h1>
 
+                    {/* Subtitle */}
                     <motion.p
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
-                      style={{ color: TEXT_DIM, fontSize: '1.1rem', lineHeight: 1.65, marginBottom: 40, maxWidth: '520px', fontWeight: 400 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.3, duration: 0.6 }}
+                      style={{ color: TEXT_DIM, fontSize: '0.95rem', lineHeight: 1.6, marginBottom: 24, maxWidth: 340 }}
                     >
-                      The intelligence layer for industrial-scale charging infrastructure — orchestrating every electron from grid to vehicle, in real time.
+                      The intelligence layer for industrial-scale charging — from grid to vehicle, in real time.
                     </motion.p>
 
+                    {/* Charger showcase */}
                     <motion.div
-                      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
-                      style={{ display: 'flex', gap: 12, marginBottom: 64 }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.9, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                      style={{ position: 'relative', height: 300, marginBottom: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      {/* Floor glow */}
+                      <div style={{ position: 'absolute', bottom: '10%', left: '50%', transform: 'translateX(-50%)', width: '85%', height: '32%', background: `radial-gradient(ellipse at center, ${ACCENT}38, transparent 65%)`, pointerEvents: 'none', filter: 'blur(10px)', zIndex: 0 }} />
+
+                      {/* Soft radial spotlight backdrop */}
+                      <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(circle at 50% 50%, ${ACCENT_SOFT}10, transparent 65%)`, pointerEvents: 'none', zIndex: 0 }} />
+
+                      {/* Connecting lines — charger ↔ badges. Lines start just outside the charger silhouette and terminate inside each badge's bounding box (badges have higher z-index so they cleanly cap the line). */}
+                      <svg
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }}
+                        viewBox="0 0 100 60"
+                        preserveAspectRatio="none"
+                      >
+                        {/* Top-right line: exits charger right side → bends up → enters CHARGING badge from below */}
+                        <motion.path
+                          d="M 58 32 L 88 32 L 88 10"
+                          fill="none"
+                          stroke={ACCENT}
+                          strokeWidth="1.4"
+                          strokeDasharray="3 3"
+                          strokeLinecap="round"
+                          opacity={0.7}
+                          vectorEffect="non-scaling-stroke"
+                          animate={{ strokeDashoffset: [0, -12] }}
+                          transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
+                        />
+                        <motion.path
+                          d="M 58 32 L 88 32 L 88 10"
+                          fill="none"
+                          stroke={ACCENT}
+                          strokeWidth="2.2"
+                          strokeDasharray="10 200"
+                          strokeLinecap="round"
+                          vectorEffect="non-scaling-stroke"
+                          style={{ filter: `drop-shadow(0 0 4px ${ACCENT})` }}
+                          animate={{ strokeDashoffset: [200, 0] }}
+                          transition={{ duration: 2.4, repeat: Infinity, ease: 'linear' }}
+                        />
+
+                        {/* Bottom-left line: exits charger left side → bends down → enters CONNECTOR badge from above */}
+                        <motion.path
+                          d="M 42 32 L 12 32 L 12 50"
+                          fill="none"
+                          stroke={ACCENT}
+                          strokeWidth="1.4"
+                          strokeDasharray="3 3"
+                          strokeLinecap="round"
+                          opacity={0.7}
+                          vectorEffect="non-scaling-stroke"
+                          animate={{ strokeDashoffset: [0, -12] }}
+                          transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
+                        />
+                        <motion.path
+                          d="M 42 32 L 12 32 L 12 50"
+                          fill="none"
+                          stroke={ACCENT}
+                          strokeWidth="2.2"
+                          strokeDasharray="10 200"
+                          strokeLinecap="round"
+                          vectorEffect="non-scaling-stroke"
+                          style={{ filter: `drop-shadow(0 0 4px ${ACCENT})` }}
+                          animate={{ strokeDashoffset: [200, 0] }}
+                          transition={{ duration: 2.4, repeat: Infinity, ease: 'linear' }}
+                        />
+                      </svg>
+
+                      {/* Charger image with float — wrapper handles centering via flexbox so framer-motion's y doesn't break it */}
+                      <motion.img
+                        src={charger3d}
+                        animate={{ y: [0, -8, 0] }}
+                        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+                        style={{
+                          width: '72%',
+                          maxWidth: 240,
+                          height: 'auto',
+                          filter: 'drop-shadow(0 18px 28px rgba(0,0,0,0.55))',
+                          position: 'relative',
+                          zIndex: 2,
+                        }}
+                      />
+
+                      {/* Charging status badge — top right */}
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.85, x: 12 }}
+                        animate={{ opacity: 1, scale: 1, x: 0 }}
+                        transition={{ delay: 1.0, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                        style={{
+                          position: 'absolute',
+                          top: 18,
+                          right: 12,
+                          background: 'rgba(11,15,13,0.85)',
+                          backdropFilter: 'blur(12px)',
+                          WebkitBackdropFilter: 'blur(12px)',
+                          border: `1px solid ${ACCENT}55`,
+                          borderRadius: 12,
+                          padding: '9px 13px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          zIndex: 3,
+                          boxShadow: `0 8px 24px rgba(0,0,0,0.4), 0 0 16px ${ACCENT}22`,
+                        }}
+                      >
+                        <span className="pulse-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: ACCENT, color: ACCENT, boxShadow: `0 0 8px ${ACCENT}` }} />
+                        <div>
+                          <div style={{ fontSize: '0.56rem', color: TEXT_DIM, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Charging</div>
+                          <div style={{ fontSize: '0.88rem', color: TEXT, fontWeight: 700, lineHeight: 1.1, marginTop: 2 }}>150 <span style={{ color: ACCENT, fontSize: '0.7rem' }}>kW</span></div>
+                        </div>
+                      </motion.div>
+
+                      {/* Connector badge — bottom left */}
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.85, x: -12 }}
+                        animate={{ opacity: 1, scale: 1, x: 0 }}
+                        transition={{ delay: 1.2, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                        style={{
+                          position: 'absolute',
+                          bottom: 18,
+                          left: 12,
+                          background: 'rgba(11,15,13,0.85)',
+                          backdropFilter: 'blur(12px)',
+                          WebkitBackdropFilter: 'blur(12px)',
+                          border: `1px solid ${BORDER_STRONG}`,
+                          borderRadius: 12,
+                          padding: '9px 13px',
+                          zIndex: 3,
+                        }}
+                      >
+                        <div style={{ fontSize: '0.56rem', color: TEXT_DIM, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Connector</div>
+                        <div style={{ fontSize: '0.88rem', color: TEXT, fontWeight: 700, lineHeight: 1.1, marginTop: 2 }}>CCS2 <span style={{ color: TEXT_DIM, fontSize: '0.62rem', fontWeight: 500 }}>· DC Fast</span></div>
+                      </motion.div>
+                    </motion.div>
+
+                    {/* CTAs */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.65, duration: 0.5 }}
+                      style={{ display: 'flex', gap: 10, marginBottom: 28 }}
                     >
                       <button
                         className="btn-accent"
                         onClick={() => setPage('find-stations')}
+                        style={{ flex: 1, padding: '15px 20px', fontSize: '0.92rem', fontWeight: 700, justifyContent: 'center' }}
                       >
-                        Find a station <span style={{ fontSize: '1rem' }}>→</span>
+                        Find a station <span style={{ fontSize: '1.05rem' }}>→</span>
+                      </button>
+                      <button
+                        onClick={() => { const el = document.querySelector('#network'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
+                        aria-label="View network"
+                        style={{
+                          width: 52,
+                          height: 52,
+                          borderRadius: 999,
+                          border: `1px solid ${BORDER_STRONG}`,
+                          background: SURFACE,
+                          color: ACCENT,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                       </button>
                     </motion.div>
 
-                    {/* STAT STRIP */}
+                    {/* Live stat cards */}
                     <motion.div
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.75 }}
-                      style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', maxWidth: 640, gap: 0 }}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.85, duration: 0.5 }}
+                      style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}
                     >
-                      <FlipStat label="Stations live" value={stationsOnline.toLocaleString()} trend="+12 / 24h" />
-                      <FlipStat label="kWh delivered today" value={kwhToday.toLocaleString()} trend="Live" />
-                      <FlipStat label="Avg session" value="22:14" trend="-1.4%" />
+                      {[
+                        { label: 'Stations', val: stationsOnline.toLocaleString(), accent: true },
+                        { label: 'kWh today', val: (kwhToday / 1000).toFixed(1) + 'K' },
+                        { label: 'Avg session', val: '22:14' },
+                      ].map((s, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            background: s.accent ? `${ACCENT}10` : SURFACE,
+                            border: `1px solid ${s.accent ? BORDER_STRONG : BORDER}`,
+                            borderRadius: 12,
+                            padding: '12px 10px',
+                          }}
+                        >
+                          <div style={{ fontSize: '1rem', color: s.accent ? ACCENT : TEXT, fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em', lineHeight: 1.1 }}>{s.val}</div>
+                          <div style={{ fontSize: '0.62rem', color: TEXT_DIM, fontWeight: 500, marginTop: 5, letterSpacing: '0.03em' }}>{s.label}</div>
+                        </div>
+                      ))}
                     </motion.div>
-                  </motion.div>
-                </div>
-
-                {/* RIGHT COLUMN — charger */}
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '600px' }}>
-                  {/* Soft floor gradient */}
-                  <div style={{ position: 'absolute', bottom: '6%', left: '50%', transform: 'translateX(-50%)', width: '90%', height: '40%', background: `radial-gradient(ellipse at center, ${ACCENT_SOFT}1f, transparent 65%)`, pointerEvents: 'none' }} />
-
-                  {/* charger image */}
-                  <motion.img
-                    src={charger3d}
-                    initial={{ opacity: 0, scale: 0.96, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
-                    style={{ width: '100%', maxWidth: '680px', position: 'relative', zIndex: 5 }}
-                  />
-
-                  {/* HUD cards & Charging Lines */}
-                  <div style={{ position: 'absolute', top: '22%', left: '-15%', zIndex: 20 }}>
-                    <HUDCard
-                      icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>}
-                      title="Total Customers"
-                      value="56,894"
-                      delay={0.8}
-                    />
                   </div>
-                  <div style={{ position: 'absolute', bottom: '28%', right: '-15%', zIndex: 20 }}>
-                    <HUDCard
-                      icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>}
-                      title="Total Bookings"
-                      value="38,465"
-                      delay={1.0}
-                    />
+                </section>
+              ) : (
+              <section style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', paddingTop: 72, background: BG }}>
+                {/* Subtle ambient gradient */}
+                <div style={{ position: 'absolute', right: '-10%', top: '15%', width: 760, height: 760, background: `radial-gradient(circle, ${ACCENT_SOFT}22, transparent 60%)`, pointerEvents: 'none', borderRadius: '50%' }} />
+
+                <div className="hero-grid" style={{ display: 'grid', gridTemplateColumns: '1.05fr 1fr', gap: 80, padding: '24px var(--side-padding) 0', alignItems: 'center', minHeight: 'calc(100vh - 120px)', position: 'relative', zIndex: 5, maxWidth: 1440, margin: '0 auto' }}>
+
+                  {/* LEFT COLUMN */}
+                  <div className="hero-left">
+                    <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}>
+                      {/* Eyebrow */}
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, marginBottom: 32, padding: '6px 12px', border: `1px solid ${BORDER}`, borderRadius: 999, background: SURFACE }}>
+                        <span className="circle pulse-dot" style={{ width: 6, height: 6, background: ACCENT, color: ACCENT }} />
+                        <span className="eyebrow" style={{ color: ACCENT_SOFT, fontSize: '0.68rem' }}>Live network · {clock || '--:--:--'}</span>
+                      </div>
+
+                      {/* TITLE */}
+                      <h1 style={{ fontSize: 'clamp(2.4rem, 4.8vw, 4.8rem)', lineHeight: 1.02, marginBottom: 28, fontWeight: 600 }}>
+                        <motion.span initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} style={{ display: 'block' }}>
+                          EV power,
+                        </motion.span>
+                        <motion.span initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }} style={{ display: 'block', color: ACCENT }}>
+                          redefined.
+                        </motion.span>
+                      </h1>
+
+                      <motion.p
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
+                        style={{ color: TEXT_DIM, fontSize: '1.1rem', lineHeight: 1.65, marginBottom: 40, maxWidth: '520px', fontWeight: 400 }}
+                      >
+                        The intelligence layer for industrial-scale charging infrastructure — orchestrating every electron from grid to vehicle, in real time.
+                      </motion.p>
+
+                      <motion.div
+                        className="hero-btns"
+                        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
+                        style={{ display: 'flex', gap: 12, marginBottom: 64 }}
+                      >
+                        <button
+                          className="btn-accent"
+                          onClick={() => setPage('find-stations')}
+                        >
+                          Find a station <span style={{ fontSize: '1rem' }}>→</span>
+                        </button>
+                      </motion.div>
+
+                      {/* STAT STRIP */}
+                      <motion.div
+                        className="hero-stat-strip"
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.75 }}
+                        style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', maxWidth: 640, gap: 0 }}
+                      >
+                        <FlipStat label="Stations live" value={stationsOnline.toLocaleString()} trend="+12 / 24h" />
+                        <FlipStat label="kWh delivered today" value={kwhToday.toLocaleString()} trend="Live" />
+                        <FlipStat label="Avg session" value="22:14" trend="-1.4%" />
+                      </motion.div>
+                    </motion.div>
                   </div>
 
-                  {/* CHARGING LINES — Static green dashed connectors. preserveAspectRatio=none so SVG units map 1:1 to container percentages; overflow:visible lets lines extend outside viewBox to reach cards (which sit at left/right:-15%) */}
-                  <svg
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 10, overflow: 'visible' }}
-                    viewBox="0 0 1000 600"
-                    preserveAspectRatio="none"
-                  >
-                    {/* Left Connection (Total Customers): flowing dashes toward card. Path is card→charger so positive offset moves dashes toward card */}
-                    <motion.path
-                      d="M -25 180 L -25 380 L 360 380"
-                      fill="none"
-                      stroke={ACCENT}
-                      strokeWidth="1.5"
-                      strokeDasharray="6 6"
-                      strokeLinecap="round"
-                      opacity={0.75}
-                      vectorEffect="non-scaling-stroke"
-                      animate={{ strokeDashoffset: [0, 24] }}
-                      transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
-                    />
-                    {/* Bright pulse traveling from charger → card (left) */}
-                    <motion.path
-                      d="M -25 180 L -25 380 L 360 380"
-                      fill="none"
-                      stroke={ACCENT}
-                      strokeWidth="2.2"
-                      strokeDasharray="50 600"
-                      strokeLinecap="round"
-                      vectorEffect="non-scaling-stroke"
-                      style={{ filter: `drop-shadow(0 0 6px ${ACCENT})` }}
-                      animate={{ strokeDashoffset: [-650, 0] }}
-                      transition={{ duration: 2.6, repeat: Infinity, ease: 'linear' }}
+                  {/* RIGHT COLUMN — charger */}
+                  <div className="hero-right hero-right-charger" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '600px' }}>
+                    {/* Soft floor gradient */}
+                    <div style={{ position: 'absolute', bottom: '6%', left: '50%', transform: 'translateX(-50%)', width: '90%', height: '40%', background: `radial-gradient(ellipse at center, ${ACCENT_SOFT}1f, transparent 65%)`, pointerEvents: 'none' }} />
+
+                    {/* charger image */}
+                    <motion.img
+                      src={charger3d}
+                      initial={{ opacity: 0, scale: 0.96, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+                      style={{ width: '100%', maxWidth: '680px', position: 'relative', zIndex: 5 }}
                     />
 
-                    {/* Right Connection (Total Bookings): flowing dashes toward card. Path is charger→card so negative offset moves dashes toward card */}
-                    <motion.path
-                      d="M 760 320 L 1025 320 L 1025 380"
-                      fill="none"
-                      stroke={ACCENT}
-                      strokeWidth="1.5"
-                      strokeDasharray="6 6"
-                      strokeLinecap="round"
-                      opacity={0.75}
-                      vectorEffect="non-scaling-stroke"
-                      animate={{ strokeDashoffset: [0, -24] }}
-                      transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
-                    />
-                    {/* Bright pulse traveling from charger → card (right) */}
-                    <motion.path
-                      d="M 760 320 L 1025 320 L 1025 380"
-                      fill="none"
-                      stroke={ACCENT}
-                      strokeWidth="2.2"
-                      strokeDasharray="40 360"
-                      strokeLinecap="round"
-                      vectorEffect="non-scaling-stroke"
-                      style={{ filter: `drop-shadow(0 0 6px ${ACCENT})` }}
-                      animate={{ strokeDashoffset: [400, 0] }}
-                      transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
-                    />
-                  </svg>
-                </div>
-              </div>
+                    {/* HUD cards & Charging Lines */}
+                    <div className="hero-hud-left" style={{ position: 'absolute', top: '22%', left: '-15%', zIndex: 20 }}>
+                      <HUDCard
+                        icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>}
+                        title="Total Customers"
+                        value="56,894"
+                        delay={0.8}
+                      />
+                    </div>
+                    <div className="hero-hud-right" style={{ position: 'absolute', bottom: '28%', right: '-15%', zIndex: 20 }}>
+                      <HUDCard
+                        icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>}
+                        title="Total Bookings"
+                        value="38,465"
+                        delay={1.0}
+                      />
+                    </div>
 
-              {/* Bottom ticker — calm */}
-              <div className="ticker" style={{ position: 'relative', marginTop: 64 }}>
-                <div className="ticker-track">
-                  {[...tickerItems, ...tickerItems].map((it, i) => {
-                    const parts = it.split(' / ');
-                    const isCharging = parts[2] === 'CHARGING';
-                    return (
-                      <span key={i} className="ticker-item">
-                        <span style={{ color: isCharging ? ACCENT_SOFT : TEXT_DIM }}>●</span>{' '}
-                        <span style={{ color: TEXT, fontWeight: 600 }}>{parts[0]}</span>
-                        <span className="sep">·</span>{parts[1]}
-                        <span className="sep">·</span><span style={{ color: isCharging ? ACCENT_SOFT : TEXT_DIM }}>{parts[2].toLowerCase()}</span>
-                        <span className="sep">·</span>{parts[3]}
-                      </span>
-                    );
-                  })}
+                    {/* CHARGING LINES — Static green dashed connectors. preserveAspectRatio=none so SVG units map 1:1 to container percentages; overflow:visible lets lines extend outside viewBox to reach cards (which sit at left/right:-15%) */}
+                    <svg
+                      className="hero-charging-lines"
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 10, overflow: 'visible' }}
+                      viewBox="0 0 1000 600"
+                      preserveAspectRatio="none"
+                    >
+                      {/* Left Connection (Total Customers): flowing dashes toward card. Path is card→charger so positive offset moves dashes toward card */}
+                      <motion.path
+                        d="M -25 180 L -25 380 L 360 380"
+                        fill="none"
+                        stroke={ACCENT}
+                        strokeWidth="1.5"
+                        strokeDasharray="6 6"
+                        strokeLinecap="round"
+                        opacity={0.75}
+                        vectorEffect="non-scaling-stroke"
+                        animate={{ strokeDashoffset: [0, 24] }}
+                        transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
+                      />
+                      {/* Bright pulse traveling from charger → card (left) */}
+                      <motion.path
+                        d="M -25 180 L -25 380 L 360 380"
+                        fill="none"
+                        stroke={ACCENT}
+                        strokeWidth="2.2"
+                        strokeDasharray="50 600"
+                        strokeLinecap="round"
+                        vectorEffect="non-scaling-stroke"
+                        style={{ filter: `drop-shadow(0 0 6px ${ACCENT})` }}
+                        animate={{ strokeDashoffset: [-650, 0] }}
+                        transition={{ duration: 2.6, repeat: Infinity, ease: 'linear' }}
+                      />
+
+                      {/* Right Connection (Total Bookings): flowing dashes toward card. Path is charger→card so negative offset moves dashes toward card */}
+                      <motion.path
+                        d="M 760 320 L 1025 320 L 1025 380"
+                        fill="none"
+                        stroke={ACCENT}
+                        strokeWidth="1.5"
+                        strokeDasharray="6 6"
+                        strokeLinecap="round"
+                        opacity={0.75}
+                        vectorEffect="non-scaling-stroke"
+                        animate={{ strokeDashoffset: [0, -24] }}
+                        transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
+                      />
+                      {/* Bright pulse traveling from charger → card (right) */}
+                      <motion.path
+                        d="M 760 320 L 1025 320 L 1025 380"
+                        fill="none"
+                        stroke={ACCENT}
+                        strokeWidth="2.2"
+                        strokeDasharray="40 360"
+                        strokeLinecap="round"
+                        vectorEffect="non-scaling-stroke"
+                        style={{ filter: `drop-shadow(0 0 6px ${ACCENT})` }}
+                        animate={{ strokeDashoffset: [400, 0] }}
+                        transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
+                      />
+                    </svg>
+                  </div>
                 </div>
-              </div>
-            </section>
+
+                {/* Bottom ticker — calm */}
+                <div className="ticker" style={{ position: 'relative', marginTop: 64 }}>
+                  <div className="ticker-track">
+                    {[...tickerItems, ...tickerItems].map((it, i) => {
+                      const parts = it.split(' / ');
+                      const isCharging = parts[2] === 'CHARGING';
+                      return (
+                        <span key={i} className="ticker-item">
+                          <span style={{ color: isCharging ? ACCENT_SOFT : TEXT_DIM }}>●</span>{' '}
+                          <span style={{ color: TEXT, fontWeight: 600 }}>{parts[0]}</span>
+                          <span className="sep">·</span>{parts[1]}
+                          <span className="sep">·</span><span style={{ color: isCharging ? ACCENT_SOFT : TEXT_DIM }}>{parts[2].toLowerCase()}</span>
+                          <span className="sep">·</span>{parts[3]}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
+              )
             } />
 
             {/* OUR SERVICES */}
-            <section id="services" style={{ padding: '40px 88px 60px', position: 'relative', overflow: 'hidden', background: '#0a0a0a' }}>
+            <section id="services" style={{ padding: isMobile ? '48px 20px 56px' : '40px var(--side-padding) 60px', position: 'relative', overflow: 'hidden', background: '#0a0a0a' }}>
+              {isMobile ? (() => {
+                const MOBILE_SERVICES = [
+                  {
+                    short: 'Charging',
+                    title: 'Charging Solutions',
+                    desc: 'Level 2 charging at 240V — moderate speed, ideal for daily use and longer stops.',
+                    features: ['Universal CCS · CHAdeMO · Type 2', '240V smart output', '4–8 hour full charge'],
+                    tag: 'Daily use',
+                    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>,
+                  },
+                  {
+                    short: 'Convenience',
+                    title: 'User Convenience',
+                    desc: 'Locate stations, start sessions, and pay seamlessly through the Trio app. Real-time availability with smart routing built in.',
+                    features: ['Live station availability', 'In-app payments', 'Smart route planning'],
+                    tag: 'One-tap',
+                    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2.5" ry="2.5" /><line x1="12" y1="18" x2="12" y2="18" /></svg>,
+                  },
+                  {
+                    short: 'Energy',
+                    title: 'Energy Management',
+                    desc: 'Hubs powered by 100% renewable energy with BESS stabilization for grid resilience and zero net emissions.',
+                    features: ['100% renewable input', 'BESS grid stabilization', 'Zero carbon footprint'],
+                    tag: 'Renewable',
+                    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s-7-5-7-12a7 7 0 0 1 14 0c0 7-7 12-7 12z" /><path d="M9 9c1 2 3 3 6 3" /></svg>,
+                  },
+                  {
+                    short: 'Support',
+                    title: 'Maintenance & Support',
+                    desc: '24/7 dedicated support with real-time telemetry and predictive maintenance, ensuring 99.99% uptime across the network.',
+                    features: ['24/7 expert response', 'Predictive maintenance', '99.99% uptime SLA'],
+                    tag: '24 / 7',
+                    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6" /><path d="M21 19a2 2 0 0 1-2 2h-1v-6h3z" /><path d="M3 19a2 2 0 0 0 2 2h1v-6H3z" /></svg>,
+                  },
+                ];
+                const current = MOBILE_SERVICES[activeService];
+                return (
+                  <div style={{ position: 'relative', zIndex: 5 }}>
+                    {/* Ambient backdrop */}
+                    <div style={{ position: 'absolute', top: '15%', right: '-30%', width: 360, height: 360, background: `radial-gradient(circle, ${ACCENT_SOFT}18, transparent 65%)`, borderRadius: '50%', pointerEvents: 'none', zIndex: 0 }} />
+
+                    {/* Eyebrow + title */}
+                    <motion.div initial={{ opacity: 0, y: -8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} style={{ position: 'relative' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'rgba(0,255,136,0.08)', border: `1px solid ${BORDER_STRONG}`, borderRadius: 99, marginBottom: 14 }}>
+                        <span className="circle pulse-dot" style={{ width: 6, height: 6, background: ACCENT, color: ACCENT }} />
+                        <span className="mono" style={{ fontSize: '0.6rem', fontWeight: 700, color: ACCENT, letterSpacing: '0.18em' }}>WHAT WE OFFER</span>
+                      </div>
+                      <h2 style={{ fontSize: '2.1rem', fontWeight: 800, color: TEXT, lineHeight: 1.05, marginBottom: 8, letterSpacing: '-0.03em' }}>
+                        Powering your fleet,<br /><span style={{ color: ACCENT }}>end to end.</span>
+                      </h2>
+                      <p style={{ color: TEXT_DIM, fontSize: '0.9rem', lineHeight: 1.55, marginBottom: 22 }}>
+                        Four integrated services that take your EV operation from grid to gateway.
+                      </p>
+                    </motion.div>
+
+                    {/* Hero showcase card — swipeable, slides up from below with subtle 3D tilt */}
+                    <div style={{ position: 'relative', perspective: 1200, minHeight: 360, marginTop: 24 }}>
+                      <AnimatePresence mode="wait" initial={false}>
+                        <motion.div
+                          key={activeService}
+                          initial={{ opacity: 0, y: 60, scale: 0.95, rotateX: 8 }}
+                          animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
+                          exit={{ opacity: 0, y: -40, scale: 0.97, rotateX: -6 }}
+                          transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+                          drag="x"
+                          dragConstraints={{ left: 0, right: 0 }}
+                          dragElastic={0.18}
+                          dragMomentum={false}
+                          onDragEnd={(_, info) => {
+                            if (info.offset.x < -50 && activeService < MOBILE_SERVICES.length - 1) {
+                              setActiveService(activeService + 1);
+                            } else if (info.offset.x > 50 && activeService > 0) {
+                              setActiveService(activeService - 1);
+                            }
+                          }}
+                          style={{
+                            background: `linear-gradient(150deg, ${SURFACE} 0%, ${BG} 100%)`,
+                            border: `1px solid ${BORDER_STRONG}`,
+                            borderRadius: 22,
+                            padding: '24px 22px',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            transformStyle: 'preserve-3d',
+                            cursor: 'grab',
+                            touchAction: 'pan-y',
+                          }}
+                        >
+                        {/* Glow blob */}
+                        <div style={{ position: 'absolute', top: -70, right: -70, width: 240, height: 240, background: `radial-gradient(circle, ${ACCENT}26, transparent 70%)`, pointerEvents: 'none' }} />
+                        {/* Dotted grid */}
+                        <div style={{ position: 'absolute', inset: 0, backgroundImage: `radial-gradient(${ACCENT}12 1px, transparent 1px)`, backgroundSize: '16px 16px', opacity: 0.4, pointerEvents: 'none', maskImage: 'radial-gradient(circle at 100% 0%, black 0%, transparent 60%)', WebkitMaskImage: 'radial-gradient(circle at 100% 0%, black 0%, transparent 60%)' }} />
+
+                        <div style={{ position: 'relative', zIndex: 1 }}>
+                          {/* Top row */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
+                            <div className="mono" style={{ color: ACCENT, fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.2em', marginTop: 14 }}>
+                              0{activeService + 1} <span style={{ color: TEXT_DIM, fontWeight: 500 }}>/ 0{MOBILE_SERVICES.length}</span>
+                            </div>
+                            <div style={{ width: 52, height: 52, borderRadius: 16, background: `${ACCENT}1a`, border: `1px solid ${ACCENT}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ACCENT, boxShadow: `0 0 24px ${ACCENT}22 inset, 0 0 16px ${ACCENT}22` }}>
+                              {current.icon}
+                            </div>
+                          </div>
+
+                          {/* Tag pill */}
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 9px', background: 'rgba(11,15,13,0.55)', border: `1px solid ${BORDER_STRONG}`, borderRadius: 999, marginBottom: 12 }}>
+                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: ACCENT }} />
+                            <span style={{ fontSize: '0.6rem', color: ACCENT, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{current.tag}</span>
+                          </div>
+
+                          {/* Title */}
+                          <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: TEXT, marginBottom: 12, letterSpacing: '-0.025em', lineHeight: 1.15 }}>
+                            {current.title}
+                          </h3>
+
+                          {/* Description */}
+                          <p style={{ color: TEXT_DIM, fontSize: '0.88rem', lineHeight: 1.65, marginBottom: 22 }}>
+                            {current.desc}
+                          </p>
+
+                          {/* Feature list */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+                            {current.features.map((f, i) => (
+                              <motion.div
+                                key={i}
+                                initial={{ opacity: 0, x: -6 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.3, delay: 0.1 + i * 0.06 }}
+                                style={{ display: 'flex', alignItems: 'center', gap: 11 }}
+                              >
+                                <div style={{ width: 20, height: 20, borderRadius: '50%', background: `${ACCENT}1c`, border: `1px solid ${ACCENT}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                                </div>
+                                <span style={{ color: TEXT, fontSize: '0.84rem', lineHeight: 1.4 }}>{f}</span>
+                              </motion.div>
+                            ))}
+                          </div>
+                        </div>
+                      </motion.div>
+                    </AnimatePresence>
+                    </div>
+
+
+                  </div>
+                );
+              })() : (
               <div style={{ maxWidth: 1440, margin: '0 auto', position: 'relative', zIndex: 5 }}>
                 {/* Header */}
                 <div style={{ textAlign: 'center', marginBottom: 40 }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.2em', color: '#e0e0e0', marginBottom: 16, textTransform: 'uppercase' }}>
+                  <div className="services-eyebrow" style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.2em', color: '#e0e0e0', marginBottom: 16, textTransform: 'uppercase' }}>
                     EXPLORE OUR SERVICES
                   </div>
-                  <h2 style={{ fontSize: 'clamp(3rem, 6vw, 6.5rem)', fontWeight: 800, letterSpacing: -0.01, marginBottom: 20, textTransform: 'uppercase', background: 'linear-gradient(180deg, #FFFFFF 0%, #B0B0B0 45%, #606060 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', filter: 'drop-shadow(0px 8px 16px rgba(0,0,0,0.4))' }}>
+                  <h2 className="services-h2" style={{ fontSize: 'clamp(3rem, 6vw, 6.5rem)', fontWeight: 800, letterSpacing: -0.01, marginBottom: 20, textTransform: 'uppercase', background: 'linear-gradient(180deg, #FFFFFF 0%, #B0B0B0 45%, #606060 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', filter: 'drop-shadow(0px 8px 16px rgba(0,0,0,0.4))' }}>
                     OUR SERVICES
                   </h2>
-                  <p style={{ color: TEXT_DIM, fontSize: '1.05rem', fontWeight: 400, maxWidth: 480, margin: '0 auto', lineHeight: 1.6 }}>
+                  <p className="services-tag" style={{ color: TEXT_DIM, fontSize: '1.05rem', fontWeight: 400, maxWidth: 480, margin: '0 auto', lineHeight: 1.6 }}>
                     We provide the best services for your electric vehicles, Fast,<br />Convenient and Eco-friendly.
                   </p>
                 </div>
 
                 {/* Main Content Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 80, alignItems: 'center', marginTop: 20 }}>
+                <div className="services-main-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 80, alignItems: 'center', marginTop: 20 }}>
                   {/* Left: Image & Description */}
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ position: 'relative', width: '100%', height: '400px', marginBottom: 40 }}>
+                    <div className="services-img-container" style={{ position: 'relative', width: '100%', height: '400px', marginBottom: 40 }}>
                       <img src={serviceImg} alt="Eco Charging" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'left center' }} />
                     </div>
 
@@ -883,7 +1512,7 @@ export default function App() {
                         { title: 'MAINTENANCE AND SUPPORT', desc: '24/7 dedicated support team with real-time telemetry and predictive maintenance to ensure 99.99% uptime.' }
                       ];
                       return (
-                        <div style={{ paddingLeft: 12 }}>
+                        <div className="services-desc" style={{ paddingLeft: 12 }}>
                           <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', marginBottom: 14, letterSpacing: -0.01 }}>
                             {SERVICES[activeService].title}
                           </h3>
@@ -907,6 +1536,7 @@ export default function App() {
                       return (
                         <div
                           key={idx}
+                          className="service-item"
                           onClick={() => setActiveService(idx)}
                           style={{
                             padding: '36px 32px',
@@ -927,55 +1557,374 @@ export default function App() {
                   </div>
                 </div>
               </div>
+              )}
             </section>
 
             {/* INDIA COVERAGE — operational dashboard */}
             {/* INDIA COVERAGE OPERATIONAL DASHBOARD (Integrated High-Fidelity Prototype) */}
             <section id="network" className="loader-section" style={{ padding: '60px 0 80px', background: '#000', overflow: 'hidden' }}>
-              <div style={{ maxWidth: 1250, margin: '0 auto', padding: '0 40px' }}>
+              <div className="network-inner" style={{ maxWidth: 1250, margin: '0 auto', padding: '0 40px' }}>
                 <div style={{ marginBottom: 40, textAlign: 'center' }}>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, padding: '6px 16px', background: 'rgba(0, 255, 136, 0.08)', border: '1px solid rgba(0, 255, 136, 0.2)', borderRadius: 99, marginBottom: 16 }}>
                     <div style={{ width: 6, height: 6, background: '#00FF88', borderRadius: '50%', boxShadow: '0 0 10px #00FF88' }}></div>
                     <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#00FF88', letterSpacing: '0.12em', textTransform: 'uppercase' }}>System Status: Operational</span>
                   </div>
-                  <h2 style={{ fontSize: 'clamp(2rem, 3vw, 3rem)', fontWeight: 600, marginBottom: 12, letterSpacing: '-0.03em', color: '#fff' }}>
+                  <h2 style={{ fontSize: isMobile ? '1.9rem' : 'clamp(2rem, 3vw, 3rem)', fontWeight: 600, marginBottom: 10, letterSpacing: '-0.03em', color: '#fff' }}>
                     ENERGY <span style={{ color: '#00FF88' }}>SYNAPSE</span>
                   </h2>
-                  <p style={{ fontSize: '1.05rem', color: 'rgba(255,255,255,0.6)', maxWidth: 540, margin: '0 auto' }}>
+                  <p style={{ fontSize: isMobile ? '0.88rem' : '1.05rem', color: 'rgba(255,255,255,0.6)', maxWidth: 540, margin: '0 auto', lineHeight: 1.5 }}>
                     India Coverage Operational Dashboard — Real-time infrastructure telemetry and network deployment metrics.
                   </p>
                 </div>
 
-                <div style={{
-                  width: '100%',
-                  height: '560px',
-                  background: '#0B0F0D',
-                  borderRadius: 20,
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  overflow: 'hidden',
-                  boxShadow: '0 20px 48px rgba(0,0,0,0.5)',
-                  position: 'relative'
-                }}>
-                  <iframe
-                    src="/dashboard.html"
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      border: 'none',
-                      background: '#0B0F0D'
-                    }}
-                    title="Energy Synapse Dashboard"
-                    scrolling="no"
-                  />
-                </div>
+                {isMobile ? (() => {
+                  const totalKw = STATIONS.reduce((a, s) => a + s.kw, 0);
+                  const stateCount = new Set(STATIONS.map(s => s.state)).size;
+                  return (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.6 }}
+                      style={{
+                        background: '#0B0F0D',
+                        border: `1px solid ${BORDER_STRONG}`,
+                        borderRadius: 20,
+                        overflow: 'hidden',
+                        position: 'relative',
+                        boxShadow: '0 20px 48px rgba(0,0,0,0.5)',
+                      }}
+                    >
+                      {/* HUD top bar */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(0,255,136,0.03)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span className="circle pulse-dot" style={{ width: 5, height: 5, background: ACCENT, color: ACCENT }} />
+                          <span className="mono" style={{ fontSize: '0.55rem', fontWeight: 700, letterSpacing: '0.18em', color: ACCENT }}>SCANNING</span>
+                        </div>
+                        <span className="mono" style={{ fontSize: '0.55rem', fontWeight: 600, letterSpacing: '0.16em', color: TEXT_DIM }}>NETWORK · IND</span>
+                        <span className="mono" style={{ fontSize: '0.55rem', fontWeight: 600, letterSpacing: '0.12em', color: TEXT_DIM }}>{clock || '--:--:--'}</span>
+                      </div>
+
+                      {/* Map area */}
+                      <div style={{
+                        position: 'relative',
+                        width: '100%',
+                        aspectRatio: '1 / 1',
+                        padding: '8px',
+                        background: `radial-gradient(circle at 50% 50%, ${ACCENT}08, transparent 70%)`,
+                      }}>
+                        {/* HUD corner brackets */}
+                        <div style={{ position: 'absolute', top: 12, left: 12, width: 18, height: 18, borderTop: `1.5px solid ${ACCENT_SOFT}`, borderLeft: `1.5px solid ${ACCENT_SOFT}`, opacity: 0.55 }} />
+                        <div style={{ position: 'absolute', top: 12, right: 12, width: 18, height: 18, borderTop: `1.5px solid ${ACCENT_SOFT}`, borderRight: `1.5px solid ${ACCENT_SOFT}`, opacity: 0.55 }} />
+                        <div style={{ position: 'absolute', bottom: 12, left: 12, width: 18, height: 18, borderBottom: `1.5px solid ${ACCENT_SOFT}`, borderLeft: `1.5px solid ${ACCENT_SOFT}`, opacity: 0.55 }} />
+                        <div style={{ position: 'absolute', bottom: 12, right: 12, width: 18, height: 18, borderBottom: `1.5px solid ${ACCENT_SOFT}`, borderRight: `1.5px solid ${ACCENT_SOFT}`, opacity: 0.55 }} />
+
+                        {/* Subtle grid backdrop */}
+                        <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(${ACCENT}08 1px, transparent 1px), linear-gradient(90deg, ${ACCENT}08 1px, transparent 1px)`, backgroundSize: '24px 24px', maskImage: 'radial-gradient(circle at 50% 50%, black 45%, transparent 85%)', WebkitMaskImage: 'radial-gradient(circle at 50% 50%, black 45%, transparent 85%)', pointerEvents: 'none' }} />
+
+                        {/* The map itself */}
+                        <div style={{ position: 'absolute', inset: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <IndiaMap />
+                        </div>
+
+                        {/* Floating live counter bottom-center */}
+                        <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', background: 'rgba(11,15,13,0.85)', border: `1px solid ${ACCENT}44`, borderRadius: 999, backdropFilter: 'blur(8px)', zIndex: 5 }}>
+                          <span className="circle pulse-dot" style={{ width: 6, height: 6, background: ACCENT, color: ACCENT }} />
+                          <span className="mono" style={{ fontSize: '0.62rem', fontWeight: 700, color: TEXT, letterSpacing: '0.06em' }}>{stationsOnline.toLocaleString()}</span>
+                          <span style={{ fontSize: '0.58rem', color: TEXT_DIM, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 600 }}>live</span>
+                        </div>
+
+                        {/* Cluster detail popup — appears when user taps a cluster, dismissed by tapping outside or close button */}
+                        <AnimatePresence>
+                          {selectedCluster && (
+                            <>
+                              <motion.div
+                                key="cluster-backdrop"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.15 }}
+                                onClick={() => setSelectedClusterId(null)}
+                                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', zIndex: 3900 }}
+                              />
+                              <div
+                                key="cluster-popup-outer"
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  position: 'fixed',
+                                  top: '50%',
+                                  left: '50%',
+                                  transform: 'translate(-50%, -50%)',
+                                  width: 'calc(100vw - 32px)',
+                                  maxWidth: 380,
+                                  zIndex: 4000,
+                                  pointerEvents: 'auto',
+                                }}
+                              >
+                                <motion.div
+                                  initial={{ opacity: 0, scale: 0.95 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  exit={{ opacity: 0, scale: 0.95 }}
+                                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                                  style={{
+                                    width: '100%',
+                                    background: '#0B0F0D',
+                                    border: `1px solid ${ACCENT}`,
+                                    borderRadius: 14,
+                                    padding: 18,
+                                    boxShadow: `0 24px 64px rgba(0,0,0,0.8), 0 0 24px ${ACCENT}33`,
+                                  }}
+                                >
+                                  {(() => {
+                                    const c = selectedCluster;
+                                    const isOne = c.count === 1;
+                                    const first = c.stations[0];
+                                    const isFast = first && first.kw >= 100;
+                                    return (
+                                      <>
+                                        {/* Header */}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, gap: 8 }}>
+                                          <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ color: ACCENT, fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 5 }}>{c.state} · {isOne ? 'STATION' : 'CLUSTER'}</div>
+                                            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff', margin: 0, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
+                                              {isOne ? first.name : `${c.count} stations in this area`}
+                                            </h3>
+                                          </div>
+                                          <button onClick={() => setSelectedClusterId(null)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', cursor: 'pointer', width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>×</button>
+                                        </div>
+
+                                        {/* Single-station stats: power, connector, status */}
+                                        {isOne ? (
+                                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14, paddingBottom: 14, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                            <div style={{ background: 'rgba(0,255,136,0.06)', border: `1px solid ${BORDER_STRONG}`, borderRadius: 10, padding: '10px 8px', textAlign: 'center' }}>
+                                              <div style={{ fontSize: '0.5rem', color: TEXT_DIM, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 4 }}>Output</div>
+                                              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: ACCENT, lineHeight: 1 }}>{first.kw}<span style={{ fontSize: '0.6rem', marginLeft: 2 }}>kW</span></div>
+                                            </div>
+                                            <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '10px 8px', textAlign: 'center' }}>
+                                              <div style={{ fontSize: '0.5rem', color: TEXT_DIM, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 4 }}>Connector</div>
+                                              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: TEXT, lineHeight: 1 }}>{first.conn}</div>
+                                            </div>
+                                            <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '10px 8px', textAlign: 'center' }}>
+                                              <div style={{ fontSize: '0.5rem', color: TEXT_DIM, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 4 }}>Type</div>
+                                              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: isFast ? ACCENT : TEXT, lineHeight: 1 }}>{isFast ? 'DC Fast' : 'Standard'}</div>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div style={{ display: 'flex', gap: 16, marginBottom: 14, paddingBottom: 14, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                            <div>
+                                              <div style={{ fontSize: '1rem', fontWeight: 700, color: ACCENT }}>{c.totalKw}<span style={{ fontSize: '0.62rem', fontWeight: 500, color: TEXT_DIM, marginLeft: 4 }}>kW total</span></div>
+                                            </div>
+                                            <div>
+                                              <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>{Math.round(c.totalKw / c.count)}<span style={{ fontSize: '0.62rem', fontWeight: 500, color: TEXT_DIM, marginLeft: 4 }}>kW avg</span></div>
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* Station list (always shows; for single it's just one row) */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 180, overflowY: 'auto' }}>
+                                          {c.stations.map((s: any) => (
+                                            <div
+                                              key={s.id}
+                                              onClick={() => { setSelectedStationId(s.id); setSelectedClusterId(null); }}
+                                              style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                cursor: 'pointer',
+                                                padding: '8px 10px',
+                                                borderRadius: 8,
+                                              }}
+                                            >
+                                              <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ color: '#fff', fontSize: '0.82rem', fontWeight: 600 }}>{s.name}</div>
+                                                <div style={{ color: TEXT_DIM, fontSize: '0.62rem' }}>{s.id}{isOne ? ` · ${s.state}` : ''}</div>
+                                              </div>
+                                              <div style={{ color: ACCENT, fontWeight: 700, fontSize: '0.82rem' }}>{s.kw} kW</div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </>
+                                    );
+                                  })()}
+                                </motion.div>
+                              </div>
+                            </>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      {/* Bottom stats strip */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderTop: `1px solid ${BORDER}`, background: 'rgba(0,255,136,0.02)' }}>
+                        {[
+                          { val: STATIONS.length.toString(), label: 'Stations' },
+                          { val: stateCount.toString(), label: 'States' },
+                          { val: (totalKw / 1000).toFixed(1) + ' MW', label: 'Capacity' },
+                        ].map((s, i) => (
+                          <div key={i} style={{ padding: '12px 8px', textAlign: 'center', borderRight: i < 2 ? `1px solid ${BORDER}` : 'none' }}>
+                            <div style={{ color: i === 0 ? ACCENT : TEXT, fontSize: '0.95rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, letterSpacing: '-0.01em' }}>{s.val}</div>
+                            <div style={{ color: TEXT_DIM, fontSize: '0.55rem', marginTop: 4, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 600 }}>{s.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  );
+                })() : (
+                  <div className="network-iframe-wrap" style={{
+                    width: '100%',
+                    height: '560px',
+                    background: '#0B0F0D',
+                    borderRadius: 20,
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    overflow: 'hidden',
+                    boxShadow: '0 20px 48px rgba(0,0,0,0.5)',
+                    position: 'relative'
+                  }}>
+                    <iframe
+                      src="/dashboard.html"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        border: 'none',
+                        background: '#0B0F0D'
+                      }}
+                      title="Energy Synapse Dashboard"
+                    />
+                  </div>
+                )}
               </div>
             </section>
 
             {/* WHY EV CHARGING SECTION */}
-            <section id="why-ev" style={{ padding: '70px 88px 100px', background: '#000', position: 'relative', overflow: 'hidden' }}>
+            <section id="why-ev" style={{ padding: isMobile ? '56px 20px 72px' : '70px var(--side-padding) 100px', background: '#000', position: 'relative', overflow: 'hidden' }}>
               {/* Background Glow */}
               <div style={{ position: 'absolute', left: '-10%', top: '40%', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(0, 255, 136, 0.05) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 1 }} />
 
+              {isMobile ? (
+                <div style={{ position: 'relative', zIndex: 5 }}>
+                  {/* Pill eyebrow */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5 }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'rgba(0,255,136,0.08)', border: `1px solid ${BORDER_STRONG}`, borderRadius: 99, marginBottom: 18 }}
+                  >
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: ACCENT, boxShadow: `0 0 10px ${ACCENT}` }} />
+                    <span style={{ fontSize: '0.62rem', fontWeight: 700, color: ACCENT, letterSpacing: '0.14em', textTransform: 'uppercase' }}>The case for EVs</span>
+                  </motion.div>
+
+                  {/* Title */}
+                  <motion.h2
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: 0.05 }}
+                    style={{ fontSize: '2.2rem', fontWeight: 800, color: TEXT, lineHeight: 1.08, marginBottom: 14, letterSpacing: '-0.03em' }}
+                  >
+                    Why EV <span style={{ color: ACCENT }}>charging</span> matters.
+                  </motion.h2>
+
+                  {/* Intro */}
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: 0.15 }}
+                    style={{ color: TEXT_DIM, fontSize: '0.94rem', lineHeight: 1.65, marginBottom: 28 }}
+                  >
+                    EV charging is at the forefront of a transportation revolution reshaping the way we move and the world we live in.
+                  </motion.p>
+
+                  {/* Combined Expert + Insight card */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                    style={{ background: `linear-gradient(180deg, ${CARD}, ${SURFACE})`, border: `1px solid ${BORDER_STRONG}`, borderRadius: 20, padding: '20px 18px 22px', marginBottom: 18, position: 'relative', overflow: 'hidden' }}
+                  >
+                    <div style={{ position: 'absolute', top: -80, right: -80, width: 240, height: 240, background: `radial-gradient(circle, ${ACCENT}18, transparent 70%)`, pointerEvents: 'none' }} />
+
+                    {/* Expert header */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingBottom: 18, borderBottom: `1px solid ${BORDER_STRONG}`, marginBottom: 18, position: 'relative', zIndex: 1 }}>
+                      <div style={{ width: 56, height: 56, borderRadius: '50%', overflow: 'hidden', border: `2px solid ${ACCENT}66`, flexShrink: 0, boxShadow: `0 0 18px ${ACCENT}33`, background: SURFACE }}>
+                        <img
+                          src={professorImg}
+                          alt="David M. Johnson"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }}
+                        />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ color: ACCENT, fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: 5 }}>Expert insight</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: TEXT, marginBottom: 2, letterSpacing: '-0.01em' }}>David M. Johnson</div>
+                        <div style={{ color: TEXT_DIM, fontSize: '0.68rem', letterSpacing: '0.04em' }}>Environment Professor · Harvard</div>
+                      </div>
+                    </div>
+
+                    {/* Slide content */}
+                    <div style={{ position: 'relative', zIndex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                        <span className="mono" style={{ color: ACCENT, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.2em' }}>
+                          0{whySlide + 1} / 0{WHY_SLIDES.length}
+                        </span>
+                        <svg width="18" height="14" viewBox="0 0 32 24" fill={ACCENT} style={{ opacity: 0.35 }}>
+                          <path d="M0 14 C 0 6, 4 0, 12 0 L 12 4 C 8 4, 6 6, 6 12 L 12 12 L 12 24 L 0 24 Z M 20 14 C 20 6, 24 0, 32 0 L 32 4 C 28 4, 26 6, 26 12 L 32 12 L 32 24 L 20 24 Z" />
+                        </svg>
+                      </div>
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={whySlide}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.35 }}
+                        >
+                          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: TEXT, marginBottom: 12, lineHeight: 1.3, letterSpacing: '-0.01em' }}>
+                            {WHY_SLIDES[whySlide].title}
+                          </h3>
+                          <p style={{ color: TEXT_DIM, fontSize: '0.86rem', lineHeight: 1.65, margin: 0 }}>
+                            {WHY_SLIDES[whySlide].text}
+                          </p>
+                        </motion.div>
+                      </AnimatePresence>
+                    </div>
+                  </motion.div>
+
+                  {/* Carousel controls */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      {WHY_SLIDES.map((_, i) => (
+                        <div
+                          key={i}
+                          onClick={() => setWhySlide(i)}
+                          style={{
+                            width: whySlide === i ? 24 : 6,
+                            height: 6,
+                            borderRadius: 999,
+                            background: whySlide === i ? ACCENT : 'rgba(255,255,255,0.22)',
+                            transition: 'all 0.3s',
+                            cursor: 'pointer'
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => setWhySlide(prev => (prev - 1 + WHY_SLIDES.length) % WHY_SLIDES.length)}
+                        style={{ width: 40, height: 40, borderRadius: '50%', border: `1px solid ${BORDER_STRONG}`, background: SURFACE, color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                      </button>
+                      <button
+                        onClick={() => setWhySlide(prev => (prev + 1) % WHY_SLIDES.length)}
+                        style={{ width: 40, height: 40, borderRadius: '50%', border: `1px solid ${BORDER_STRONG}`, background: SURFACE, color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
               <div style={{ maxWidth: 1440, margin: '0 auto', position: 'relative', zIndex: 5 }}>
                 {/* Header */}
                 <div style={{ textAlign: 'center', marginBottom: 50 }}>
@@ -1021,19 +1970,20 @@ export default function App() {
                 </div>
 
                 {/* Content Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 100, alignItems: 'center' }}>
+                <div className="why-grid" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 100, alignItems: 'center' }}>
                   {/* Left side: Text Carousel */}
                   <div style={{ position: 'relative' }}>
                     <AnimatePresence mode="wait">
                       <motion.div
                         key={whySlide}
+                        className="why-slide-content"
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
                         transition={{ duration: 0.5 }}
                         style={{ minHeight: '320px' }}
                       >
-                        <h3 style={{
+                        <h3 className="why-slide-title" style={{
                           fontSize: '1.8rem',
                           fontWeight: 700,
                           color: '#ffffff',
@@ -1127,7 +2077,7 @@ export default function App() {
                   </div>
 
                   {/* Right side: Professor Profile */}
-                  <div style={{ textAlign: 'right' }}>
+                  <div className="why-right-col" style={{ textAlign: 'right' }}>
                     <motion.div
                       initial={{ opacity: 0, x: 40 }}
                       whileInView={{ opacity: 1, x: 0 }}
@@ -1136,7 +2086,7 @@ export default function App() {
                       style={{ position: 'relative', display: 'inline-block' }}
                     >
                       {/* Image Container with Gradient Background */}
-                      <div style={{
+                      <div className="prof-img-container" style={{
                         width: '420px',
                         height: '520px',
                         background: 'radial-gradient(circle at center, rgba(0, 255, 136, 0.08) 0%, transparent 70%)',
@@ -1164,7 +2114,7 @@ export default function App() {
                         transition={{ duration: 0.8, delay: 0.8 }}
                         style={{ marginTop: 32 }}
                       >
-                        <h4 style={{
+                        <h4 className="prof-name" style={{
                           fontSize: '3.2rem',
                           fontWeight: 800,
                           color: '#ffffff',
@@ -1177,7 +2127,7 @@ export default function App() {
                         }}>
                           DAVID M. JOHNSON
                         </h4>
-                        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+                        <p className="prof-role" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
                           ENVIRONMENT PROFESSOR AT HARVARD
                         </p>
                       </motion.div>
@@ -1185,10 +2135,11 @@ export default function App() {
                   </div>
                 </div>
               </div>
+              )}
             </section>
 
             {/* CTA SECTION */}
-            <section style={{ padding: '100px 48px 0', background: `linear-gradient(to bottom, #0a0e0c, ${SURFACE})`, position: 'relative', overflow: 'hidden', textAlign: 'center' }}>
+            <section className="cta-section" style={{ padding: '100px 48px 0', background: `linear-gradient(to bottom, #0a0e0c, ${SURFACE})`, position: 'relative', overflow: 'hidden', textAlign: 'center' }}>
               <div style={{ maxWidth: 1000, margin: '0 auto', position: 'relative', zIndex: 10 }}>
                 <div style={{
                   color: TEXT_DIM,
@@ -1222,7 +2173,7 @@ export default function App() {
                   }}>EMISSION-FREE MOBILITY.</span>
                 </h2>
 
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 80 }}>
+                <div className="cta-btn-row" style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 80 }}>
                   <button className="btn-accent" onClick={() => navigate('find-stations')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 36px', fontSize: '0.95rem', fontWeight: 700 }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     FIND STATION
@@ -1249,12 +2200,627 @@ export default function App() {
             transition={{ duration: 0.3 }}
             style={{ background: BG, paddingTop: '72px', overflow: 'hidden' }}
           >
-            <iframe
-              src="/find-stations.html"
-              style={{ width: '100%', height: '1100px', border: 'none' }}
-              title="Find Charging Stations"
-              scrolling="no"
-            />
+            {isMobile ? (
+              <div style={{ padding: '24px 0 80px', minHeight: 'calc(100vh - 72px)', background: BG, position: 'relative', overflow: 'hidden' }}>
+                {/* Ambient backdrop glow */}
+                <div style={{ position: 'absolute', top: '-5%', right: '-30%', width: 420, height: 420, background: `radial-gradient(circle, ${ACCENT_SOFT}1f, transparent 65%)`, borderRadius: '50%', pointerEvents: 'none', zIndex: 0 }} />
+                <div style={{ position: 'absolute', top: '40%', left: '-30%', width: 360, height: 360, background: `radial-gradient(circle, ${ACCENT_SOFT}15, transparent 70%)`, borderRadius: '50%', pointerEvents: 'none', zIndex: 0 }} />
+
+                <div style={{ position: 'relative', zIndex: 1, padding: '0 16px' }}>
+                  {/* HERO CARD — pill + title + icon-led stats unified */}
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    style={{
+                      background: `linear-gradient(150deg, ${SURFACE} 0%, ${BG} 100%)`,
+                      border: `1px solid ${BORDER_STRONG}`,
+                      borderRadius: 22,
+                      padding: '20px 18px',
+                      marginBottom: 14,
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {/* Decorative glow */}
+                    <div style={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, background: `radial-gradient(circle, ${ACCENT}1c, transparent 70%)`, pointerEvents: 'none' }} />
+                    {/* Decorative dotted grid */}
+                    <div style={{ position: 'absolute', inset: 0, backgroundImage: `radial-gradient(${ACCENT}10 1px, transparent 1px)`, backgroundSize: '18px 18px', opacity: 0.5, pointerEvents: 'none', maskImage: 'radial-gradient(circle at top right, black 0%, transparent 70%)', WebkitMaskImage: 'radial-gradient(circle at top right, black 0%, transparent 70%)' }} />
+
+                    <div style={{ position: 'relative', zIndex: 1 }}>
+                      {/* Top row — pill + icon actions */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 10 }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'rgba(0,255,136,0.1)', border: `1px solid ${BORDER_STRONG}`, borderRadius: 99 }}>
+                          <span className="circle pulse-dot" style={{ width: 6, height: 6, background: ACCENT, color: ACCENT }} />
+                          <span className="mono" style={{ fontSize: '0.6rem', fontWeight: 700, color: ACCENT, letterSpacing: '0.18em' }}>{filteredStations.length} LIVE</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            type="button"
+                            aria-label={searchOpen ? 'Close search' : 'Open search'}
+                            onClick={() => setSearchOpen(o => !o)}
+                            style={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: 10,
+                              border: `1px solid ${searchOpen ? ACCENT : BORDER_STRONG}`,
+                              background: searchOpen ? `${ACCENT}1c` : 'rgba(11,15,13,0.5)',
+                              color: searchOpen ? ACCENT : TEXT,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              transition: 'all 200ms',
+                              backdropFilter: 'blur(6px)',
+                            }}
+                          >
+                            {searchOpen ? (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            ) : (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={filtersOpen ? 'Close filters' : 'Open filters'}
+                            onClick={() => setFiltersOpen(o => !o)}
+                            style={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: 10,
+                              border: `1px solid ${filtersOpen ? ACCENT : BORDER_STRONG}`,
+                              background: filtersOpen ? `${ACCENT}1c` : 'rgba(11,15,13,0.5)',
+                              color: filtersOpen ? ACCENT : TEXT,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              transition: 'all 200ms',
+                              backdropFilter: 'blur(6px)',
+                              position: 'relative',
+                            }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
+                            {(connFilter !== 'Any' || minPower > 0) && (
+                              <span style={{ position: 'absolute', top: -3, right: -3, width: 10, height: 10, borderRadius: '50%', background: ACCENT, border: `2px solid ${SURFACE}`, boxShadow: `0 0 6px ${ACCENT}` }} />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Title */}
+                      <h1 style={{ fontSize: '1.95rem', fontWeight: 700, color: TEXT, lineHeight: 1.1, marginBottom: 6, letterSpacing: '-0.03em' }}>
+                        Find your <span style={{ color: ACCENT, whiteSpace: 'nowrap' }}>charging spot.</span>
+                      </h1>
+
+                      {/* Subtitle */}
+                      <p style={{ color: TEXT_DIM, fontSize: '0.82rem', lineHeight: 1.45, marginBottom: 18 }}>
+                        Real-time charging network across India.
+                      </p>
+
+                      {/* Divider */}
+                      <div style={{ height: 1, background: `linear-gradient(to right, transparent 0%, ${BORDER_STRONG} 30%, ${BORDER_STRONG} 70%, transparent 100%)`, marginBottom: 16 }} />
+
+                      {/* Icon-led stats */}
+                      {(() => {
+                        const totalKw = STATIONS.reduce((a, s) => a + s.kw, 0);
+                        const items = [
+                          {
+                            icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>,
+                            val: STATIONS.length,
+                            label: 'Stations',
+                          },
+                          {
+                            icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>,
+                            val: new Set(STATIONS.map(s => s.state)).size,
+                            label: 'States',
+                          },
+                          {
+                            icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="16" height="10" rx="2"></rect><line x1="22" y1="11" x2="22" y2="13"></line><line x1="6" y1="11" x2="6" y2="13"></line><line x1="10" y1="11" x2="10" y2="13"></line></svg>,
+                            val: (totalKw / 1000).toFixed(1),
+                            unit: 'MW',
+                            label: 'Capacity',
+                          },
+                        ];
+                        return (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                            {items.map((stat, i) => (
+                              <div key={i} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', paddingLeft: i === 0 ? 0 : 12 }}>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: ACCENT, marginBottom: 6 }}>
+                                  {stat.icon}
+                                  <span style={{ fontSize: '0.52rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>{stat.label}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                                  <span style={{ fontSize: '1.35rem', fontWeight: 700, color: TEXT, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', lineHeight: 1 }}>{stat.val}</span>
+                                  {stat.unit && <span style={{ fontSize: '0.65rem', color: ACCENT, fontWeight: 600 }}>{stat.unit}</span>}
+                                </div>
+                                {i < 2 && <div style={{ position: 'absolute', right: 0, top: 4, bottom: 4, width: 1, background: BORDER }} />}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </motion.div>
+
+                  {/* Collapsible search bar — only visible when icon tapped */}
+                  <AnimatePresence initial={false}>
+                    {searchOpen && (
+                      <motion.div
+                        key="search-collapsible"
+                        initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                        animate={{ opacity: 1, height: 'auto', marginBottom: 18 }}
+                        exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                        style={{ overflow: 'hidden' }}
+                      >
+                        <div style={{ position: 'relative' }}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={TEXT_DIM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                          <input
+                            type="search"
+                            autoFocus
+                            placeholder="City, state, or station ID..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '14px 44px 14px 42px',
+                              background: SURFACE,
+                              border: `1px solid ${ACCENT}55`,
+                              borderRadius: 14,
+                              color: TEXT,
+                              fontSize: '0.95rem',
+                              outline: 'none',
+                              fontFamily: 'inherit',
+                              boxShadow: `0 0 0 3px ${ACCENT}11`,
+                            }}
+                          />
+                          {searchQuery && (
+                            <button
+                              type="button"
+                              onClick={() => setSearchQuery('')}
+                              aria-label="Clear search"
+                              style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 28, height: 28, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.08)', color: TEXT_DIM, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Combined Filters — collapsible */}
+                  <AnimatePresence initial={false}>
+                    {filtersOpen && (
+                      <motion.div
+                        key="filters-panel"
+                        initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                        animate={{ opacity: 1, height: 'auto', marginBottom: 18 }}
+                        exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                        style={{ overflow: 'hidden' }}
+                      >
+                        <div style={{ background: SURFACE, border: `1px solid ${BORDER_STRONG}`, borderRadius: 16, padding: '16px 14px' }}>
+                          {/* Header row */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: ACCENT }}>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
+                              <span style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Filters</span>
+                            </div>
+                            {(connFilter !== 'Any' || minPower > 0) && (
+                              <button
+                                type="button"
+                                onClick={() => { setConnFilter('Any'); setMinPower(0); }}
+                                style={{ background: 'none', border: 'none', color: TEXT_DIM, fontSize: '0.65rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: 0, letterSpacing: '0.04em' }}
+                              >
+                                Clear all
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Connector */}
+                          <div style={{ marginBottom: 14 }}>
+                            <div style={{ color: TEXT_DIM, fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 8 }}>Connector</div>
+                            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2, WebkitOverflowScrolling: 'touch' }}>
+                              {['Any', 'CCS', 'CHAdeMO', 'Type 2'].map((c) => {
+                                const count = c === 'Any' ? STATIONS.length : STATIONS.filter(s => s.conn === c).length;
+                                const active = connFilter === c;
+                                return (
+                                  <button
+                                    key={c}
+                                    onClick={() => setConnFilter(c)}
+                                    style={{
+                                      padding: '7px 13px',
+                                      background: active ? `${ACCENT}22` : 'transparent',
+                                      border: `1px solid ${active ? ACCENT : BORDER_STRONG}`,
+                                      color: active ? ACCENT : TEXT,
+                                      borderRadius: 999,
+                                      fontSize: '0.76rem',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      whiteSpace: 'nowrap',
+                                      flexShrink: 0,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 6,
+                                      fontFamily: 'inherit',
+                                    }}
+                                  >
+                                    {c}
+                                    <span style={{ fontSize: '0.62rem', opacity: 0.7, fontWeight: 500 }}>{count}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Hairline divider */}
+                          <div style={{ height: 1, background: BORDER, marginBottom: 14 }} />
+
+                          {/* Min power */}
+                          <div>
+                            <div style={{ color: TEXT_DIM, fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 8 }}>Min power</div>
+                            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2, WebkitOverflowScrolling: 'touch' }}>
+                              {[0, 50, 100, 150].map(p => {
+                                const active = minPower === p;
+                                return (
+                                  <button
+                                    key={p}
+                                    onClick={() => setMinPower(p)}
+                                    style={{
+                                      padding: '7px 13px',
+                                      background: active ? `${ACCENT}22` : 'transparent',
+                                      border: `1px solid ${active ? ACCENT : BORDER_STRONG}`,
+                                      color: active ? ACCENT : TEXT,
+                                      borderRadius: 999,
+                                      fontSize: '0.76rem',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      whiteSpace: 'nowrap',
+                                      flexShrink: 0,
+                                      fontFamily: 'inherit',
+                                    }}
+                                  >
+                                    {p === 0 ? 'Any' : `${p}+ kW`}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Results header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <div style={{ color: TEXT_DIM, fontSize: '0.78rem', fontWeight: 500 }}>
+                      <span style={{ color: TEXT, fontWeight: 700 }}>{filteredStations.length}</span> result{filteredStations.length !== 1 ? 's' : ''}
+                    </div>
+                    <div style={{ color: ACCENT_SOFT, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+                      By power
+                    </div>
+                  </div>
+
+                  {/* Tap hint */}
+                  <div style={{ fontSize: '0.65rem', color: TEXT_DIM, marginBottom: 8, fontStyle: 'italic' }}>Tap a station for details & directions</div>
+
+                  {/* Station cards */}
+                  {filteredStations.length === 0 ? (
+                    <div style={{ padding: '48px 24px', textAlign: 'center', border: `1px dashed ${BORDER_STRONG}`, borderRadius: 16, background: SURFACE, marginTop: 8 }}>
+                      <div style={{ fontSize: '2.4rem', marginBottom: 8 }}>⚡</div>
+                      <div style={{ color: TEXT, fontSize: '1rem', fontWeight: 600, marginBottom: 4 }}>No stations match</div>
+                      <div style={{ color: TEXT_DIM, fontSize: '0.85rem', marginBottom: 18, lineHeight: 1.5 }}>Try clearing filters or expanding your search.</div>
+                      <button
+                        type="button"
+                        onClick={() => { setSearchQuery(''); setConnFilter('Any'); setMinPower(0); }}
+                        style={{ background: 'transparent', border: `1px solid ${ACCENT}`, color: ACCENT, padding: '9px 18px', borderRadius: 999, fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                      >
+                        Clear all filters
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {(() => {
+                        const sorted = [...filteredStations].sort((a, b) => b.kw - a.kw);
+                        const visible = stationListExpanded ? sorted : sorted.slice(0, 5);
+                        const hiddenCount = sorted.length - visible.length;
+                        return (
+                          <>
+                            {visible.map((s, idx) => {
+                              const isSelected = selectedStationId === s.id;
+                              const isFast = s.kw >= 100;
+                        const connColor = s.conn === 'CCS' ? ACCENT : s.conn === 'CHAdeMO' ? '#FFB020' : '#5EC8FF';
+                        return (
+                          <motion.div
+                            key={s.id}
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.35, delay: Math.min(idx * 0.03, 0.4) }}
+                            whileTap={{ scale: 0.985 }}
+                            onClick={() => { setSelectedStationId(s.id); setStationSheetOpen(true); }}
+                            style={{
+                              background: isSelected ? `${ACCENT}10` : CARD,
+                              border: `1px solid ${isSelected ? ACCENT : BORDER}`,
+                              borderRadius: 16,
+                              padding: '14px 16px 14px 14px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 14,
+                              cursor: 'pointer',
+                              transition: 'background 200ms, border-color 200ms',
+                              position: 'relative',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            {isSelected && (
+                              <motion.div
+                                initial={{ scaleY: 0 }}
+                                animate={{ scaleY: 1 }}
+                                transition={{ duration: 0.25 }}
+                                style={{ position: 'absolute', left: 0, top: 10, bottom: 10, width: 3, background: ACCENT, borderRadius: 999, transformOrigin: 'center' }}
+                              />
+                            )}
+
+                            {/* Connector icon */}
+                            <div style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: 12,
+                              background: `${connColor}18`,
+                              border: `1px solid ${connColor}33`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                              color: connColor,
+                            }}>
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+                            </div>
+
+                            {/* Info */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                                <div style={{ color: TEXT, fontSize: '1rem', fontWeight: 700, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{s.name}</div>
+                                {isFast && (
+                                  <span style={{ fontSize: '0.55rem', fontWeight: 700, color: ACCENT, background: `${ACCENT}1c`, padding: '2px 6px', borderRadius: 4, letterSpacing: '0.12em', flexShrink: 0 }}>FAST</span>
+                                )}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.7rem', color: TEXT_DIM, marginBottom: 6 }}>
+                                <span>{s.id}</span>
+                                <span style={{ opacity: 0.5 }}>·</span>
+                                <span>{s.state}</span>
+                              </div>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 7px', background: `${connColor}10`, border: `1px solid ${connColor}25`, borderRadius: 6 }}>
+                                <span style={{ width: 4, height: 4, borderRadius: '50%', background: connColor }} />
+                                <span style={{ color: connColor, fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.04em' }}>{s.conn}</span>
+                              </div>
+                            </div>
+
+                            {/* Power */}
+                            <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div>
+                                <div style={{ color: isSelected ? ACCENT : TEXT, fontWeight: 700, fontSize: '1.3rem', lineHeight: 1, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{s.kw}</div>
+                                <div style={{ color: TEXT_DIM, fontSize: '0.58rem', marginTop: 4, letterSpacing: '0.18em', fontWeight: 600 }}>KW</div>
+                              </div>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isSelected ? ACCENT : TEXT_DIM} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><polyline points="9 18 15 12 9 6"></polyline></svg>
+                            </div>
+                          </motion.div>
+                        );
+                            })}
+                            {hiddenCount > 0 && (
+                              <motion.button
+                                key="show-more"
+                                type="button"
+                                onClick={() => setStationListExpanded(true)}
+                                whileTap={{ scale: 0.98 }}
+                                style={{
+                                  marginTop: 6,
+                                  padding: '14px 20px',
+                                  background: 'transparent',
+                                  border: `1px dashed ${ACCENT}66`,
+                                  color: ACCENT,
+                                  borderRadius: 14,
+                                  fontSize: '0.88rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: 8,
+                                  fontFamily: 'inherit',
+                                  letterSpacing: '0.01em',
+                                }}
+                              >
+                                Show {hiddenCount} more {hiddenCount === 1 ? 'station' : 'stations'}
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                              </motion.button>
+                            )}
+                            {stationListExpanded && sorted.length > 5 && (
+                              <motion.button
+                                key="show-less"
+                                type="button"
+                                onClick={() => { setStationListExpanded(false); window.scrollTo({ top: 200, behavior: 'smooth' }); }}
+                                whileTap={{ scale: 0.98 }}
+                                style={{
+                                  marginTop: 6,
+                                  padding: '12px 20px',
+                                  background: 'transparent',
+                                  border: `1px solid ${BORDER_STRONG}`,
+                                  color: TEXT_DIM,
+                                  borderRadius: 14,
+                                  fontSize: '0.82rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: 6,
+                                  fontFamily: 'inherit',
+                                }}
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                                Show less
+                              </motion.button>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                {/* STATION DETAIL — bottom sheet */}
+                <AnimatePresence>
+                  {stationSheetOpen && selectedStation && (
+                    <>
+                      <motion.div
+                        key="sheet-backdrop"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        onClick={() => setStationSheetOpen(false)}
+                        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', zIndex: 1500 }}
+                      />
+                      <motion.div
+                        key="sheet"
+                        initial={{ y: '100%' }}
+                        animate={{ y: 0 }}
+                        exit={{ y: '100%' }}
+                        transition={{ type: 'spring', damping: 32, stiffness: 320 }}
+                        drag="y"
+                        dragConstraints={{ top: 0, bottom: 0 }}
+                        dragElastic={0.2}
+                        onDragEnd={(_, info) => { if (info.offset.y > 120 || info.velocity.y > 500) setStationSheetOpen(false); }}
+                        style={{
+                          position: 'fixed',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          background: `linear-gradient(180deg, ${SURFACE}, ${BG})`,
+                          borderTop: `1px solid ${BORDER_STRONG}`,
+                          borderTopLeftRadius: 24,
+                          borderTopRightRadius: 24,
+                          zIndex: 1600,
+                          padding: '10px 20px 28px',
+                          maxHeight: '88vh',
+                          overflowY: 'auto',
+                          boxShadow: `0 -16px 40px rgba(0,0,0,0.5), 0 0 60px ${ACCENT}14`,
+                        }}
+                      >
+                        {/* Drag handle */}
+                        <div style={{ width: 44, height: 4, background: 'rgba(255,255,255,0.22)', borderRadius: 999, margin: '0 auto 18px' }} />
+
+                        {/* Header row */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18, gap: 12 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                              <span className="circle pulse-dot" style={{ width: 7, height: 7, background: ACCENT, color: ACCENT }} />
+                              <span style={{ color: ACCENT, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Available now</span>
+                            </div>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: TEXT, letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 4 }}>{selectedStation.name}</h2>
+                            <div style={{ color: TEXT_DIM, fontSize: '0.82rem' }}>{selectedStation.state} · {selectedStation.id}</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setStationSheetOpen(false)}
+                            aria-label="Close"
+                            style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.06)', color: TEXT, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                          </button>
+                        </div>
+
+                        {/* Power highlight card */}
+                        <div style={{
+                          background: `linear-gradient(135deg, ${ACCENT}1c, ${ACCENT_SOFT}06)`,
+                          border: `1px solid ${ACCENT}40`,
+                          borderRadius: 20,
+                          padding: '20px',
+                          marginBottom: 16,
+                          position: 'relative',
+                          overflow: 'hidden',
+                        }}>
+                          <div style={{ position: 'absolute', top: -50, right: -50, width: 180, height: 180, background: `radial-gradient(circle, ${ACCENT}30, transparent 70%)`, pointerEvents: 'none' }} />
+                          <div style={{ position: 'relative', zIndex: 1 }}>
+                            <div style={{ fontSize: '0.6rem', color: ACCENT, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 8 }}>Max output</div>
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 12 }}>
+                              <span style={{ fontSize: '3rem', fontWeight: 800, color: TEXT, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.04em', lineHeight: 1 }}>{selectedStation.kw}</span>
+                              <span style={{ fontSize: '1.1rem', color: ACCENT, fontWeight: 700 }}>kW</span>
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                              <div style={{ padding: '5px 10px', background: 'rgba(11,15,13,0.55)', border: `1px solid ${BORDER_STRONG}`, borderRadius: 999, color: TEXT, fontSize: '0.7rem', fontWeight: 600 }}>{selectedStation.conn}</div>
+                              {selectedStation.kw >= 100 && <div style={{ padding: '5px 10px', background: `${ACCENT}28`, borderRadius: 999, color: ACCENT, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em' }}>DC FAST</div>}
+                              <div style={{ padding: '5px 10px', background: 'rgba(11,15,13,0.55)', border: `1px solid ${BORDER_STRONG}`, borderRadius: 999, color: TEXT_DIM, fontSize: '0.7rem', fontWeight: 600 }}>{Math.max(2, Math.round(selectedStation.kw / 30))} stalls</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Quick stats */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+                          {[
+                            { label: 'Status', val: 'Online', tone: 'accent' },
+                            { label: 'ETA 80%', val: `${Math.max(15, Math.round(2400 / selectedStation.kw))}m` },
+                            { label: 'Wait', val: 'None' },
+                          ].map((stat, i) => (
+                            <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '12px 8px', textAlign: 'center' }}>
+                              <div style={{ fontSize: '0.55rem', color: TEXT_DIM, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 5 }}>{stat.label}</div>
+                              <div style={{ fontSize: '0.95rem', color: stat.tone === 'accent' ? ACCENT : TEXT, fontWeight: 700, lineHeight: 1, letterSpacing: '-0.01em' }}>{stat.val}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Location card */}
+                        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '13px 14px', marginBottom: 18, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                          <div style={{ width: 38, height: 38, borderRadius: 10, background: `${ACCENT}14`, border: `1px solid ${ACCENT}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ACCENT, flexShrink: 0 }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.58rem', color: TEXT_DIM, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 4 }}>Location</div>
+                            <div style={{ fontSize: '0.88rem', color: TEXT, fontWeight: 500, lineHeight: 1.4 }}>{selectedStation.name}, {selectedStation.state}</div>
+                            <div className="mono" style={{ fontSize: '0.68rem', color: TEXT_DIM, marginTop: 4, letterSpacing: '0.02em' }}>{selectedStation.lat.toFixed(3)}° N · {selectedStation.lon.toFixed(3)}° E</div>
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div style={{ display: 'flex', gap: 10 }}>
+                          <button
+                            type="button"
+                            className="btn-accent"
+                            onClick={() => {
+                              const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedStation.lat},${selectedStation.lon}`;
+                              window.open(url, '_blank', 'noopener,noreferrer');
+                            }}
+                            style={{ flex: 1, padding: '15px 20px', fontSize: '0.9rem', fontWeight: 700, justifyContent: 'center' }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+                            Get directions
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setStationSheetOpen(false); setShowContactForm(true); }}
+                            aria-label="Reserve / contact"
+                            style={{ width: 52, height: 52, borderRadius: 999, border: `1px solid ${BORDER_STRONG}`, background: SURFACE, color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer' }}
+                          >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                          </button>
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <iframe
+                className="find-stations-iframe"
+                src="/find-stations.html"
+                style={{ width: '100%', height: '1100px', border: 'none' }}
+                title="Find Charging Stations"
+              />
+            )}
           </motion.section>
         )}
 
@@ -1268,9 +2834,9 @@ export default function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <section style={{ background: BG, paddingTop: '120px', paddingBottom: '100px', minHeight: '80vh' }}>
-              <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 40px' }}>
-                <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: 40, color: '#fff' }}>Privacy Policy</h1>
+            <section className="policy-section" style={{ background: BG, paddingTop: '120px', paddingBottom: '100px', minHeight: '80vh' }}>
+              <div className="policy-inner" style={{ maxWidth: 800, margin: '0 auto', padding: '0 40px' }}>
+                <h1 className="policy-title" style={{ fontSize: '3rem', fontWeight: 800, marginBottom: 40, color: '#fff' }}>Privacy Policy</h1>
                 <div style={{ color: TEXT_DIM, lineHeight: 1.8, fontSize: '1.05rem' }}>
                   <p style={{ marginBottom: 32, fontStyle: 'italic', borderLeft: `4px solid ${ACCENT}`, paddingLeft: 24 }}>At Trio, your privacy is important to us. This Privacy Policy document contains types of information that is collected and recorded by us and how we use it.</p>
                   <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>1. Information We Collect</h2>
@@ -1298,9 +2864,9 @@ export default function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <section style={{ background: BG, paddingTop: '120px', paddingBottom: '100px', minHeight: '80vh' }}>
-              <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 40px' }}>
-                <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: 40, color: '#fff' }}>Terms & Conditions</h1>
+            <section className="policy-section" style={{ background: BG, paddingTop: '120px', paddingBottom: '100px', minHeight: '80vh' }}>
+              <div className="policy-inner" style={{ maxWidth: 800, margin: '0 auto', padding: '0 40px' }}>
+                <h1 className="policy-title" style={{ fontSize: '3rem', fontWeight: 800, marginBottom: 40, color: '#fff' }}>Terms & Conditions</h1>
                 <div style={{ color: TEXT_DIM, lineHeight: 1.8, fontSize: '1.05rem' }}>
                   <p style={{ marginBottom: 32, fontStyle: 'italic', borderLeft: `4px solid ${ACCENT}`, paddingLeft: 24 }}>Welcome to Trio. These terms and conditions outline the rules and regulations for the use of our website and services.</p>
                   <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>1. Acceptance of Terms</h2>
@@ -1326,9 +2892,9 @@ export default function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <section style={{ background: BG, paddingTop: '120px', paddingBottom: '100px', minHeight: '80vh' }}>
-              <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 40px' }}>
-                <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: 40, color: '#fff' }}>Refund Policy</h1>
+            <section className="policy-section" style={{ background: BG, paddingTop: '120px', paddingBottom: '100px', minHeight: '80vh' }}>
+              <div className="policy-inner" style={{ maxWidth: 800, margin: '0 auto', padding: '0 40px' }}>
+                <h1 className="policy-title" style={{ fontSize: '3rem', fontWeight: 800, marginBottom: 40, color: '#fff' }}>Refund Policy</h1>
                 <div style={{ color: TEXT_DIM, lineHeight: 1.8, fontSize: '1.05rem' }}>
                   <p style={{ marginBottom: 32, fontStyle: 'italic', borderLeft: `4px solid ${ACCENT}`, paddingLeft: 24 }}>At Trio, we strive to ensure satisfaction with our services. If you're not entirely satisfied, we're here to help with a fair refund policy.</p>
                   <h2 style={{ color: '#fff', fontSize: '1.5rem', marginTop: 48, marginBottom: 20 }}>1. Eligibility for Refunds</h2>
@@ -1354,9 +2920,187 @@ export default function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <section style={{ background: BG, color: TEXT, paddingTop: '100px', paddingBottom: '120px' }}>
+            <section style={{ background: BG, color: TEXT, paddingTop: isMobile ? '92px' : '100px', paddingBottom: isMobile ? '64px' : '120px' }}>
+            {isMobile ? (
+              <div style={{ padding: '0 20px', position: 'relative', zIndex: 1 }}>
+                {/* Ambient backdrop */}
+                <div style={{ position: 'absolute', top: '5%', right: '-30%', width: 360, height: 360, background: `radial-gradient(circle, ${ACCENT_SOFT}20, transparent 65%)`, borderRadius: '50%', pointerEvents: 'none', zIndex: -1 }} />
+
+                {/* HERO */}
+                <motion.div initial={{ opacity: 0, y: -8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} style={{ marginBottom: 40 }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'rgba(0,255,136,0.08)', border: `1px solid ${BORDER_STRONG}`, borderRadius: 99, marginBottom: 16 }}>
+                    <span className="circle pulse-dot" style={{ width: 6, height: 6, background: ACCENT, color: ACCENT }} />
+                    <span className="mono" style={{ fontSize: '0.6rem', fontWeight: 700, color: ACCENT, letterSpacing: '0.18em' }}>WHO WE ARE</span>
+                  </div>
+                  <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: '2.4rem', fontWeight: 800, color: '#fff', marginBottom: 14, letterSpacing: '-0.035em', lineHeight: 1.05 }}>
+                    Our story <br /><span style={{ color: ACCENT }}>starts here.</span>
+                  </h1>
+                  <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '0.95rem', color: TEXT_DIM, lineHeight: 1.6 }}>
+                    Empowering communities through clean technology and sustainable mobility — built in India, designed for the world.
+                  </p>
+                </motion.div>
+
+                {/* VISION */}
+                <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ marginBottom: 32, background: `linear-gradient(180deg, ${SURFACE}, ${BG})`, border: `1px solid ${BORDER_STRONG}`, borderRadius: 20, overflow: 'hidden' }}>
+                  <div style={{ height: 180, background: SURFACE, position: 'relative', overflow: 'hidden', borderBottom: `1px solid ${BORDER}` }}>
+                    <img src="/sustainability.png" alt="Sustainability" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(180deg, transparent 40%, ${BG} 100%)` }} />
+                  </div>
+                  <div style={{ padding: '18px 18px 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                      <div style={{ width: 28, height: 2, background: ACCENT }} />
+                      <span style={{ color: ACCENT, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Our Vision</span>
+                    </div>
+                    <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.45rem', fontWeight: 800, color: '#fff', marginBottom: 12, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                      A planet where progress moves with nature.
+                    </h2>
+                    <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '0.88rem', color: TEXT_DIM, lineHeight: 1.65 }}>
+                      Trio envisions a world where every ride and every delivery contributes to a healthier planet. We aim to eliminate pollution and create a fully electric ecosystem for both personal mobility and logistics — making sustainable, smart, connected transport accessible to all.
+                    </p>
+                  </div>
+                </motion.div>
+
+                {/* MISSION */}
+                <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ marginBottom: 40 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <div style={{ width: 28, height: 2, background: ACCENT }} />
+                    <span style={{ color: ACCENT, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Our Mission</span>
+                  </div>
+                  <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.45rem', fontWeight: 800, color: '#fff', marginBottom: 18, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                    Redefining how people move<br /><span style={{ color: ACCENT }}>and how business runs.</span>
+                  </h2>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {[
+                      { tag: 'Electric Cars', text: 'Eco-friendly, stylish, reliable, and affordable for everyday use.' },
+                      { tag: 'Smart Logistics', text: '100% electric fleets that reduce congestion, noise, and emissions.' },
+                      { tag: 'Sustainability', text: 'Green practices across design, manufacturing, and daily operations.' },
+                      { tag: 'Innovation', text: 'Smart tech + renewable energy + continuous performance.' },
+                      { tag: 'Community', text: 'Raising awareness about eco-friendly mobility and nature-first choices.' },
+                      { tag: 'Connected Future', text: 'Technology, people, and the environment coexisting seamlessly.' },
+                    ].map((m, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -8 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.35, delay: 0.06 * i }}
+                        style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderLeft: `3px solid ${ACCENT}`, borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}
+                      >
+                        <span style={{ color: ACCENT, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{m.tag}</span>
+                        <span style={{ color: TEXT, fontSize: '0.86rem', lineHeight: 1.45, fontFamily: "'Outfit', sans-serif" }}>{m.text}</span>
+                      </motion.div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 16, padding: '12px 14px', borderLeft: `2px solid ${ACCENT}44`, fontStyle: 'italic', color: TEXT_DIM, fontSize: '0.82rem', lineHeight: 1.5, fontFamily: "'Outfit', sans-serif" }}>
+                    Our purpose is clear — protect nature, reduce pollution, and create a sustainable legacy.
+                  </div>
+                </motion.div>
+
+                {/* STORY TIMELINE */}
+                <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ marginBottom: 40 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <div style={{ width: 28, height: 2, background: ACCENT }} />
+                    <span style={{ color: ACCENT, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Our Story</span>
+                  </div>
+                  <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.45rem', fontWeight: 800, color: '#fff', marginBottom: 22, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                    From an idea<br /><span style={{ color: ACCENT }}>to a city-wide impact.</span>
+                  </h2>
+
+                  {/* Vertical timeline */}
+                  <div style={{ position: 'relative', paddingLeft: 24, marginBottom: 24 }}>
+                    <div style={{ position: 'absolute', left: 7, top: 6, bottom: 6, width: 1, background: `linear-gradient(180deg, ${ACCENT}55, ${BORDER_STRONG} 50%, ${ACCENT}55)` }} />
+                    {[
+                      { year: '2018', title: 'The spark', text: 'Roots in telecom (Vodafone, multi-country). The realization: tech advances but environment pays the cost.' },
+                      { year: '2022', title: 'Two cars in Pune', text: 'Tested the market by driving cars ourselves — learned operations, payments, and driver realities.' },
+                      { year: '2024', title: 'Trio Evolution India', text: 'Officially registered. Pivoted to B2B with Mahindra Logistics, serving TCS, Capgemini, Cognizant, KPMG, Indigo.' },
+                      { year: '2025', title: 'Kolkata charging hub', text: "Becoming Kolkata's first fleet owner to build a private EV charging hub in New Town's IT corridor." },
+                    ].map((step, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -8 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.4, delay: i * 0.1 }}
+                        style={{ position: 'relative', marginBottom: i === 3 ? 0 : 22 }}
+                      >
+                        <div style={{ position: 'absolute', left: -24, top: 4, width: 14, height: 14, borderRadius: '50%', background: BG, border: `2px solid ${ACCENT}`, boxShadow: `0 0 8px ${ACCENT}55` }} />
+                        <div className="mono" style={{ color: ACCENT, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.18em', marginBottom: 4 }}>{step.year}</div>
+                        <div style={{ fontFamily: "'Syne', sans-serif", fontSize: '1rem', fontWeight: 700, color: TEXT, marginBottom: 4 }}>{step.title}</div>
+                        <p style={{ fontFamily: "'Outfit', sans-serif", color: TEXT_DIM, fontSize: '0.82rem', lineHeight: 1.55, margin: 0 }}>{step.text}</p>
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  {/* Featured founder quote card */}
+                  <div style={{ background: `linear-gradient(140deg, ${ACCENT}12, ${SURFACE})`, border: `1px solid ${ACCENT}44`, borderRadius: 16, padding: '22px 18px', position: 'relative', overflow: 'hidden' }}>
+                    <svg width="22" height="18" viewBox="0 0 32 24" fill={ACCENT} style={{ opacity: 0.45, marginBottom: 10 }}>
+                      <path d="M0 14 C 0 6, 4 0, 12 0 L 12 4 C 8 4, 6 6, 6 12 L 12 12 L 12 24 L 0 24 Z M 20 14 C 20 6, 24 0, 32 0 L 32 4 C 28 4, 26 6, 26 12 L 32 12 L 32 24 L 20 24 Z" />
+                    </svg>
+                    <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1rem', fontStyle: 'italic', color: TEXT, lineHeight: 1.5, margin: 0, letterSpacing: '-0.01em' }}>
+                      We're not just offering transport — we're driving a transition to greener, smarter mobility for all.
+                    </p>
+                  </div>
+                </motion.div>
+
+                {/* LEADERSHIP */}
+                <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ marginBottom: 40 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <div style={{ width: 28, height: 2, background: ACCENT }} />
+                    <span style={{ color: ACCENT, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Leadership</span>
+                  </div>
+                  <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.45rem', fontWeight: 800, color: '#fff', marginBottom: 18, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                    The minds behind <span style={{ color: ACCENT }}>the mission.</span>
+                  </h2>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {[
+                      { name: 'Subhash Kumar', role: 'Founder & CEO', bio: 'B.Tech CS. Former Vodafone. Now leading Trio with focus on innovation and sustainability.', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1974&auto=format&fit=crop' },
+                      { name: 'Somnath Das', role: 'Founder & COO', bio: 'M.A. graduate. Former Uber. Drives smooth operations and impactful strategy at Trio.', img: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=2070&auto=format&fit=crop' },
+                    ].map(leader => (
+                      <div key={leader.name} style={{ background: '#121915', border: `1px solid ${BORDER_STRONG}`, borderRadius: 18, padding: 18, display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                        <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', border: `2px solid ${ACCENT}33`, flexShrink: 0 }}>
+                          <img src={leader.img} alt={leader.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.05rem', fontWeight: 700, color: '#fff', marginBottom: 3, letterSpacing: '-0.01em' }}>{leader.name}</h3>
+                          <div style={{ fontFamily: "'Outfit', sans-serif", color: ACCENT, fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 }}>{leader.role}</div>
+                          <p style={{ fontFamily: "'Outfit', sans-serif", color: TEXT_DIM, fontSize: '0.78rem', lineHeight: 1.5, margin: 0 }}>{leader.bio}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+
+                {/* IMPACT */}
+                <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <div style={{ width: 28, height: 2, background: ACCENT }} />
+                    <span style={{ color: ACCENT, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Impact</span>
+                  </div>
+                  <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.45rem', fontWeight: 800, color: '#fff', marginBottom: 18, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                    Accelerating a <span style={{ color: ACCENT }}>cleaner future.</span>
+                  </h2>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    {[
+                      { icon: 'M23 6l-9.5 9.5-5-5L1 18', title: 'EV-First Fleet', desc: 'All-electric fleet rollout across regions by 2026.' },
+                      { icon: 'M12 2L5 9h4v12h6V9h4L12 2z', title: 'Nature First', desc: 'Reforestation + renewables, net-zero by 2030.' },
+                      { icon: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z', title: 'Smart Roads', desc: 'Road-harvested energy for streetlights & EVs.' },
+                      { icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75', title: 'Inclusion', desc: 'R&D + skills for rural clean-tech adoption.' },
+                    ].map((item, i) => (
+                      <div key={i} style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderTop: `3px solid ${ACCENT}`, borderRadius: 12, padding: 14 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: `${ACCENT}15`, color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={item.icon} /></svg>
+                        </div>
+                        <h4 style={{ fontFamily: "'Syne', sans-serif", fontSize: '0.85rem', fontWeight: 700, color: '#fff', marginBottom: 5, lineHeight: 1.2 }}>{item.title}</h4>
+                        <p style={{ fontFamily: "'Outfit', sans-serif", color: TEXT_DIM, fontSize: '0.7rem', lineHeight: 1.45, margin: 0 }}>{item.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              </div>
+            ) : (
+              <>
               {/* 1. HERO */}
-              <div style={{ textAlign: 'center', marginBottom: 120, padding: '0 24px' }}>
+              <div className="about-hero" style={{ textAlign: 'center', marginBottom: 120, padding: '0 24px' }}>
                 <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(3rem, 7vw, 4.5rem)', fontWeight: 800, color: '#fff', marginBottom: 20, letterSpacing: '-0.04em', lineHeight: 1.1 }}>
                   Our Commitment to <br />
                   <span style={{ color: ACCENT, fontSize: '0.8em' }}>Communities</span>
@@ -1366,16 +3110,16 @@ export default function App() {
                 </p>
               </div>
 
-              <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px' }}>
+              <div className="about-inner" style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px' }}>
                 {/* 2. VISION */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 60, alignItems: 'center', marginBottom: 120 }}>
-                  <div style={{ background: SURFACE, borderRadius: 32, overflow: 'hidden', border: `1px solid ${BORDER}`, height: 420 }}>
+                <div className="vision-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 60, alignItems: 'center', marginBottom: 120 }}>
+                  <div className="vision-img" style={{ background: SURFACE, borderRadius: 32, overflow: 'hidden', border: `1px solid ${BORDER}`, height: 420 }}>
                     <img src="/sustainability.png" alt="Sustainability" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
                       <div style={{ width: 40, height: 2, background: ACCENT, borderRadius: 1 }} />
-                      <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '2.5rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>Our Vision</h2>
+                      <h2 className="about-section-title" style={{ fontFamily: "'Syne', sans-serif", fontSize: '2.5rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>Our Vision</h2>
                     </div>
                     <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.1rem', color: TEXT_DIM, lineHeight: 1.8, fontWeight: 400 }}>
                       Trio envisions a world where every ride and every delivery contributes to a healthier planet. Our vision is to eliminate pollution and carbon emissions by creating a fully electric ecosystem for both personal mobility and logistics. We aspire to lead the transformation of the automotive and logistics industries, making sustainable, smart, and connected transportation accessible to all. By combining innovation, responsibility, and care for nature, we aim to build a future where progress and the environment move together in harmony.
@@ -1384,11 +3128,11 @@ export default function App() {
                 </div>
 
                 {/* 3. MISSION */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: 60, alignItems: 'center', marginBottom: 120 }}>
+                <div className="mission-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: 60, alignItems: 'center', marginBottom: 120 }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
                       <div style={{ width: 40, height: 2, background: ACCENT, borderRadius: 1 }} />
-                      <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '2.2rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>Our Mission</h2>
+                      <h2 className="about-section-title" style={{ fontFamily: "'Syne', sans-serif", fontSize: '2.2rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>Our Mission</h2>
                     </div>
                     <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1rem', color: TEXT_DIM, lineHeight: 1.7, marginBottom: 20 }}>
                       At Trio, our mission is to redefine the way people move and businesses operate. We are committed to:
@@ -1414,13 +3158,13 @@ export default function App() {
                       Our purpose is clear: to protect nature, reduce pollution, and create a sustainable legacy where clean mobility becomes the heartbeat of modern living.
                     </p>
                   </div>
-                  <div style={{ background: SURFACE, borderRadius: 32, overflow: 'hidden', border: `1px solid ${BORDER}`, height: 500 }}>
+                  <div className="mission-img" style={{ background: SURFACE, borderRadius: 32, overflow: 'hidden', border: `1px solid ${BORDER}`, height: 500 }}>
                     <img src="/energy.png" alt="Energy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
                 </div>
 
                 {/* 4. STORY */}
-                <div style={{ maxWidth: 800, margin: '0 auto 160px', textAlign: 'center' }}>
+                <div className="story-block" style={{ maxWidth: 800, margin: '0 auto 160px', textAlign: 'center' }}>
                   <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '3rem', fontWeight: 800, color: '#fff', marginBottom: 12 }}>Our <span style={{ color: ACCENT }}>Story</span></h2>
                   <div style={{ width: 60, height: 2, background: ACCENT, margin: '0 auto 60px' }} />
                   <div style={{ fontFamily: "'Outfit', sans-serif", color: TEXT_DIM, fontSize: '1.15rem', lineHeight: 1.8, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 32 }}>
@@ -1429,7 +3173,7 @@ export default function App() {
                     <p>In 2022, the concept of clean transportation took shape. Starting small in Pune with just two leased vehicles, we tested the market, even driving the cars ourselves to understand a driver's real challenges. Those early months gave us invaluable insights into operations, payment irregularities, and the struggles drivers face daily. From there, we expanded to Kolkata, scaling our fleet and building strong foundations.</p>
 
                     <div style={{ padding: '60px 0', textAlign: 'center' }}>
-                      <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '2.2rem', fontWeight: 500, color: ACCENT, fontStyle: 'italic', lineHeight: 1.4, letterSpacing: '-0.01em' }}>
+                      <h3 className="story-quote" style={{ fontFamily: "'Outfit', sans-serif", fontSize: '2.2rem', fontWeight: 500, color: ACCENT, fontStyle: 'italic', lineHeight: 1.4, letterSpacing: '-0.01em' }}>
                         "We're not just offering transport — we're driving a transition to greener, smarter mobility for all."
                       </h3>
                     </div>
@@ -1442,14 +3186,14 @@ export default function App() {
                 </div>
 
                 {/* 5. LEADERSHIP */}
-                <div style={{ marginBottom: 160 }}>
+                <div className="leadership-block" style={{ marginBottom: 160 }}>
                   <div style={{ textAlign: 'center', marginBottom: 80 }}>
                     <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '3rem', fontWeight: 800, color: '#fff', marginBottom: 20 }}>Leadership <span style={{ color: ACCENT }}>Team</span></h2>
                     <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.2rem', color: TEXT_DIM, maxWidth: 640, margin: '0 auto' }}>
                       The minds behind our mission to transform transportation through clean energy and community-driven innovation.
                     </p>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, maxWidth: 1000, margin: '0 auto' }}>
+                  <div className="leadership-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, maxWidth: 1000, margin: '0 auto' }}>
                     {[
                       {
                         name: "Subhash Kumar",
@@ -1464,8 +3208,8 @@ export default function App() {
                         img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=2070&auto=format&fit=crop"
                       }
                     ].map(leader => (
-                      <div key={leader.name} style={{ background: '#121915', border: `1px solid ${BORDER}`, borderRadius: 40, padding: 60, textAlign: 'center', transition: 'all 0.3s' }}>
-                        <div style={{ width: 120, height: 120, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 32px', border: `4px solid ${ACCENT}22` }}>
+                      <div key={leader.name} className="leadership-card" style={{ background: '#121915', border: `1px solid ${BORDER}`, borderRadius: 40, padding: 60, textAlign: 'center', transition: 'all 0.3s' }}>
+                        <div className="leader-avatar" style={{ width: 120, height: 120, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 32px', border: `4px solid ${ACCENT}22` }}>
                           <img src={leader.img} alt={leader.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                         <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.75rem', fontWeight: 700, color: '#fff', marginBottom: 8 }}>{leader.name}</h3>
@@ -1484,14 +3228,14 @@ export default function App() {
                       We are dedicated to accelerating a clean, equitable future by integrating technology and sustainability in every journey.
                     </p>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24 }}>
+                  <div className="impact-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24 }}>
                     {[
                       { icon: 'M23 6l-9.5 9.5-5-5L1 18', title: "EV-First Fleet", desc: "Deploying electric vehicles and hybrid transport solutions across all regions by 2026." },
                       { icon: 'M12 2L5 9h4v12h6V9h4L12 2z', title: "Commitment to Nature", desc: "Investing in reforestation and renewable projects to exceed net-zero impact by 2030." },
                       { icon: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z', title: "Sustainable Smart Roads", desc: "Implementing road-based energy harvesting to power streetlights and EV charging stations." },
                       { icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75', title: "Innovation & Inclusion", desc: "Fostering R&D and skill-building programs to empower rural communities in clean tech adoption." }
                     ].map((item, i) => (
-                      <div key={i} style={{ background: BG, border: `1px solid ${BORDER}`, borderTop: `4px solid ${ACCENT}`, borderRadius: 16, padding: 32, transition: 'transform 0.3s' }}>
+                      <div key={i} className="impact-card" style={{ background: BG, border: `1px solid ${BORDER}`, borderTop: `4px solid ${ACCENT}`, borderRadius: 16, padding: 32, transition: 'transform 0.3s' }}>
                         <div style={{ color: ACCENT, marginBottom: 20 }}>
                           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={item.icon}></path></svg>
                         </div>
@@ -1502,6 +3246,8 @@ export default function App() {
                   </div>
                 </div>
               </div>
+              </>
+            )}
             </section>
           </motion.div>
         )}
@@ -1519,12 +3265,115 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <footer style={{ padding: '80px 88px 40px', background: SURFACE, borderTop: `1px solid ${BORDER}` }}>
+      <footer style={{ padding: '80px var(--side-padding) 40px', background: SURFACE, borderTop: `1px solid ${BORDER}` }}>
         <div style={{ maxWidth: 1440, margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 0.8fr 1.2fr 1.2fr', gap: 48, marginBottom: 60 }}>
+          {isMobile ? (
+            <div>
+              {/* Brand */}
+              <div style={{ marginBottom: 28 }}>
+                <img src={logo} alt="TRIO" style={{ height: 64, marginBottom: 14, display: 'block' }} />
+                <div style={{ color: ACCENT, fontSize: '1rem', fontWeight: 700, marginBottom: 10 }}>Drive Smart. Go Green.</div>
+                <p style={{ color: TEXT_DIM, fontSize: '0.86rem', lineHeight: 1.6, marginBottom: 18 }}>
+                  TRIO EV is Kolkata's premier electric mobility company, delivering clean, green, and smart transportation solutions for businesses and individuals.
+                </p>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  {[
+                    'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z',
+                    'M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z'
+                  ].map((path, i) => (
+                    <div key={i} style={{ width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER_STRONG}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill={ACCENT}><path d={path}></path></svg>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Contact CTA */}
+              <button
+                className="btn-accent"
+                style={{ width: '100%', padding: '15px 24px', fontSize: '0.85rem', fontWeight: 800, borderRadius: 12, background: '#5AF59F', color: '#000', boxShadow: '0 4px 14px rgba(90, 245, 159, 0.3)', letterSpacing: '0.05em', marginBottom: 32, justifyContent: 'center' }}
+                onClick={() => setShowContactForm(true)}
+              >
+                CONTACT US →
+              </button>
+
+              {/* Links — two columns */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 32, paddingTop: 28, borderTop: `1px solid rgba(255,255,255,0.05)` }}>
+                <div>
+                  <div style={{ color: ACCENT, fontWeight: 800, fontSize: '0.62rem', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.18em' }}>EXPLORE</div>
+                  {[
+                    { label: 'Find stations', target: 'find-stations' },
+                    { label: 'About us', target: 'about-us' },
+                    { label: 'Blog', target: 'blog' }
+                  ].map(l => (
+                    <a key={l.label} href="#" onClick={(e) => { e.preventDefault(); navigate(l.target); }} style={{ display: 'block', color: TEXT, textDecoration: 'none', marginBottom: 12, fontSize: '0.92rem', fontWeight: 500 }}>{l.label}</a>
+                  ))}
+                </div>
+                <div>
+                  <div style={{ color: ACCENT, fontWeight: 800, fontSize: '0.62rem', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.18em' }}>LEGAL</div>
+                  {[
+                    { label: 'Privacy Policy', target: 'privacy-policy' },
+                    { label: 'Terms & Conditions', target: 'terms-conditions' },
+                    { label: 'Refund Policy', target: 'refund-policy' }
+                  ].map(l => (
+                    <a key={l.label} href="#" onClick={(e) => { e.preventDefault(); navigate(l.target); }} style={{ display: 'block', color: TEXT, textDecoration: 'none', marginBottom: 12, fontSize: '0.92rem', fontWeight: 500 }}>{l.label}</a>
+                  ))}
+                </div>
+              </div>
+
+              {/* Contact info */}
+              <div style={{ paddingTop: 28, borderTop: `1px solid rgba(255,255,255,0.05)`, marginBottom: 32 }}>
+                <div style={{ color: ACCENT, fontWeight: 800, fontSize: '0.62rem', marginBottom: 18, textTransform: 'uppercase', letterSpacing: '0.18em' }}>GET IN TOUCH</div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <div style={{ width: 32, height: 32, flexShrink: 0, borderRadius: 8, background: `${ACCENT}10`, color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ color: TEXT, fontSize: '0.78rem', fontWeight: 600, marginBottom: 3 }}>Office</div>
+                      <div style={{ color: TEXT_DIM, fontSize: '0.8rem', lineHeight: 1.5 }}>Shilpata More, Mahammadpur Road (Opp. Curiosity), New Town, Kolkata - 700135</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <div style={{ width: 32, height: 32, flexShrink: 0, borderRadius: 8, background: `${ACCENT}10`, color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 7v10M15 7v10M3 12h18"></path></svg>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ color: TEXT, fontSize: '0.78rem', fontWeight: 600, marginBottom: 3 }}>Registered</div>
+                      <div style={{ color: TEXT_DIM, fontSize: '0.8rem', lineHeight: 1.5 }}>29E, Raipur Mondal Para Road, P.S. Netaji Nagar, Naktala, Kolkata - 700047</div>
+                    </div>
+                  </div>
+
+                  <a href="tel:+916291842000" style={{ display: 'flex', gap: 12, alignItems: 'center', textDecoration: 'none' }}>
+                    <div style={{ width: 32, height: 32, flexShrink: 0, borderRadius: 8, background: `${ACCENT}10`, color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                    </div>
+                    <div style={{ color: TEXT, fontSize: '0.92rem', fontWeight: 500 }}>+91 62918 42000</div>
+                  </a>
+
+                  <a href="mailto:info@trioev.com" style={{ display: 'flex', gap: 12, alignItems: 'center', textDecoration: 'none' }}>
+                    <div style={{ width: 32, height: 32, flexShrink: 0, borderRadius: 8, background: `${ACCENT}10`, color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                    </div>
+                    <div style={{ color: TEXT, fontSize: '0.92rem', fontWeight: 500 }}>info@trioev.com</div>
+                  </a>
+                </div>
+              </div>
+
+              {/* Bottom — stacked, centered */}
+              <div style={{ paddingTop: 24, borderTop: `1px solid rgba(255,255,255,0.05)`, textAlign: 'center', color: TEXT_DIM, fontSize: '0.72rem' }}>
+                <div>© 2026 Trio Inc. All rights reserved.</div>
+                <div style={{ fontStyle: 'italic', marginTop: 6, color: ACCENT_SOFT }}>Clean. Green. Smart.</div>
+              </div>
+            </div>
+          ) : (
+          <>
+          <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 0.8fr 1.2fr 1.2fr', gap: 48, marginBottom: 60 }}>
             {/* Column 1: Brand */}
             <div>
-              <img src={logo} alt="TRIO" style={{ height: '82px', marginBottom: 20 }} />
+              <img className="footer-logo" src={logo} alt="TRIO" style={{ height: '82px', marginBottom: 20 }} />
               <div style={{ color: ACCENT, fontSize: '1.1rem', fontWeight: 700, marginBottom: 12, fontFamily: "'Inter', sans-serif" }}>Drive Smart. Go Green.</div>
               <p style={{ color: TEXT_DIM, fontSize: '0.85rem', lineHeight: 1.6, marginBottom: 20, maxWidth: 240 }}>
                 TRIO EV is Kolkata's premier electric mobility company, delivering clean, green, and smart transportation solutions for businesses and individuals.
@@ -1602,10 +3451,12 @@ export default function App() {
               </button>
             </div>
           </div>
-          <div style={{ color: TEXT_DIM, fontSize: '0.75rem', borderTop: `1px solid rgba(255,255,255,0.05)`, paddingTop: 24, display: 'flex', justifyContent: 'space-between' }}>
+          <div className="footer-bottom" style={{ color: TEXT_DIM, fontSize: '0.75rem', borderTop: `1px solid rgba(255,255,255,0.05)`, paddingTop: 24, display: 'flex', justifyContent: 'space-between' }}>
             <span>© 2026 Trio Inc. All rights reserved.</span>
             <span style={{ fontStyle: 'italic' }}>Clean. Green. Smart.</span>
           </div>
+          </>
+          )}
         </div>
       </footer>
     </div>

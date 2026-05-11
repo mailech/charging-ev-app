@@ -14,7 +14,8 @@ const MediaLibrary = lazy(() => import('@/features/blog/pages/MediaLibrary'));
 const CategoryPage = lazy(() => import('@/features/blog/pages/Category'));
 const CarouselManager = lazy(() => import('@/features/carousel/pages/CarouselManager'));
 const NoticeManager = lazy(() => import('@/features/notice/pages/NoticeManager'));
-const Placeholder = lazy(() => import('./Placeholder'));
+const SettingsManager = lazy(() => import('@/features/settings/pages/SettingsManager'));
+const StationsManager = lazy(() => import('@/features/station/pages/StationsManager'));
 
 function PageFallback() {
     return (
@@ -53,10 +54,8 @@ export const router = createBrowserRouter([
             { path: 'taxonomy', element: <Navigate to="/category" replace /> },
             { path: 'carousel', element: withSuspense(<CarouselManager />) },
             { path: 'notice', element: withSuspense(<NoticeManager />) },
-            {
-                path: 'settings',
-                element: withSuspense(<Placeholder title="Settings" />),
-            },
+            { path: 'stations', element: withSuspense(<StationsManager />) },
+            { path: 'settings', element: withSuspense(<SettingsManager />) },
             { path: '*', element: <Navigate to="/overview" replace /> },
         ],
     },

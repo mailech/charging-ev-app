@@ -37,7 +37,7 @@ function BlogList({ onOpen }: { onOpen: (slug: string) => void }) {
     const totalPages = Math.max(1, Math.ceil(total / limit));
 
     return (
-        <section style={{ background: BG, paddingTop: 120, paddingBottom: 100, minHeight: '80vh' }}>
+        <section style={{ background: BG, paddingTop: 'clamp(80px, 12vh, 120px)', paddingBottom: 100, minHeight: '80vh', position: 'relative', overflow: 'hidden' }}>
             <div
                 style={{
                     pointerEvents: 'none',
@@ -53,7 +53,7 @@ function BlogList({ onOpen }: { onOpen: (slug: string) => void }) {
                 }}
             />
 
-            <div style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto', padding: '0 40px' }}>
+            <div style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto', padding: '0 var(--side-padding, 24px)' }}>
                 <header style={{ marginBottom: 48 }}>
                     <div
                         style={{
@@ -351,7 +351,7 @@ function BlogDetail({ slug, onBack }: { slug: string; onBack: () => void }) {
     if (query.isLoading) {
         return (
             <section style={{ background: BG, paddingTop: 120, minHeight: '80vh', color: TEXT }}>
-                <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 40px' }}>
+                <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 var(--side-padding, 24px)' }}>
                     <div
                         style={{
                             height: 32,
@@ -388,7 +388,7 @@ function BlogDetail({ slug, onBack }: { slug: string; onBack: () => void }) {
                     textAlign: 'center',
                 }}
             >
-                <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 40px' }}>
+                <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 var(--side-padding, 24px)' }}>
                     <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: 24 }}>
                         Post not found.
                     </h1>
@@ -420,6 +420,7 @@ function BlogDetail({ slug, onBack }: { slug: string; onBack: () => void }) {
                 paddingTop: 120,
                 paddingBottom: 100,
                 minHeight: '80vh',
+                overflow: 'hidden',
                 color: TEXT,
                 position: 'relative',
             }}
@@ -445,7 +446,7 @@ function BlogDetail({ slug, onBack }: { slug: string; onBack: () => void }) {
                     zIndex: 1,
                     maxWidth: 800,
                     margin: '0 auto',
-                    padding: '0 40px',
+                    padding: '0 var(--side-padding, 24px)',
                 }}
             >
                 <button

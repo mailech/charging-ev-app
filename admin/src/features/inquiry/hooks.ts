@@ -2,16 +2,23 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
     Inquiry,
     InquiryListQuery,
+    InquiryListResponse,
     InquiryNoteCreateInput,
+    InquiryReplyCreateInput,
     InquiryUpdateInput,
 } from '@trio/shared/inquiry';
+import type { InquiryStatus } from '@trio/shared/inquiry';
 import {
     addInquiryNote,
+    bulkAutoReply,
+    bulkDelete,
+    bulkUpdateStatus,
     getInquiry,
     getInquiryCounts,
     getInquiryStats,
     listAdmins,
     listInquiries,
+    sendInquiryReply,
     updateInquiry,
 } from './api';
 
@@ -70,15 +77,40 @@ export function useUpdateInquiryMutation(id: string) {
     return useMutation({
         mutationFn: (body: InquiryUpdateInput) => updateInquiry(id, body),
         onMutate: async (body) => {
-            await qc.cancelQueries({ queryKey: inquiryKeys.detail(id) });
-            const prev = qc.getQueryData<Inquiry>(inquiryKeys.detail(id));
-            if (prev) {
-                qc.setQueryData<Inquiry>(inquiryKeys.detail(id), { ...prev, ...body } as Inquiry);
+            await qc.cancelQueries({ queryKey: inquiryKeys.all });
+
+            const prevDetail = qc.getQueryData<Inquiry>(inquiryKeys.detail(id));
+            if (prevDetail) {
+                qc.setQueryData<Inquiry>(
+                    inquiryKeys.detail(id),
+                    { ...prevDetail, ...body } as Inquiry,
+                );
             }
-            return { prev };
+
+            const listSnapshots: [readonly unknown[], InquiryListResponse | undefined][] = [];
+            const lists = qc.getQueriesData<InquiryListResponse>({
+                queryKey: ['inquiries', 'list'],
+            });
+            for (const [key, data] of lists) {
+                listSnapshots.push([key, data]);
+                if (!data) continue;
+                qc.setQueryData<InquiryListResponse>(key, {
+                    ...data,
+                    items: data.items.map((it) =>
+                        it.id === id ? ({ ...it, ...body } as Inquiry) : it,
+                    ),
+                });
+            }
+
+            return { prevDetail, listSnapshots };
         },
         onError: (_err, _body, ctx) => {
-            if (ctx?.prev) qc.setQueryData(inquiryKeys.detail(id), ctx.prev);
+            if (ctx?.prevDetail) {
+                qc.setQueryData(inquiryKeys.detail(id), ctx.prevDetail);
+            }
+            for (const [key, data] of ctx?.listSnapshots ?? []) {
+                qc.setQueryData(key, data);
+            }
         },
         onSettled: () => {
             qc.invalidateQueries({ queryKey: inquiryKeys.all });
@@ -93,5 +125,40 @@ export function useAddNoteMutation(id: string) {
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: inquiryKeys.detail(id) });
         },
+    });
+}
+
+export function useSendReplyMutation(id: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (body: InquiryReplyCreateInput) => sendInquiryReply(id, body),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: inquiryKeys.all });
+        },
+    });
+}
+
+export function useBulkStatusMutation() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: { ids: string[]; status: InquiryStatus }) =>
+            bulkUpdateStatus(vars.ids, vars.status),
+        onSuccess: () => qc.invalidateQueries({ queryKey: inquiryKeys.all }),
+    });
+}
+
+export function useBulkDeleteMutation() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (ids: string[]) => bulkDelete(ids),
+        onSuccess: () => qc.invalidateQueries({ queryKey: inquiryKeys.all }),
+    });
+}
+
+export function useBulkAutoReplyMutation() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (ids: string[]) => bulkAutoReply(ids),
+        onSuccess: () => qc.invalidateQueries({ queryKey: inquiryKeys.all }),
     });
 }

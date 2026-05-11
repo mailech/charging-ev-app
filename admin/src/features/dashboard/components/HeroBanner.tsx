@@ -10,11 +10,11 @@ export function HeroBanner() {
             <div className="relative flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
                 <div className="max-w-xl">
                     <h1 className="text-2xl font-semibold leading-tight text-slate-900 md:text-3xl">
-                        Powering EV adoption{' '}
+                        Powering EV charging{' '}
                         <span className="text-emerald-600">across India.</span>
                     </h1>
                     <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-600">
-                        Monitor incoming inquiries, triage customer requests, and keep your team
+                        Monitor charging-station inquiries, manage your network, and keep your team
                         responsive — all from one console.
                     </p>
                     <div className="mt-4 flex items-center gap-3">

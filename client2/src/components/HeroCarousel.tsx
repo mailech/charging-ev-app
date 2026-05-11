@@ -97,6 +97,7 @@ function CarouselView({ carousel }: { carousel: Carousel }) {
 
     return (
         <section
+            className="hero-carousel"
             style={{
                 position: 'relative',
                 width: '100%',
@@ -112,6 +113,19 @@ function CarouselView({ carousel }: { carousel: Carousel }) {
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
         >
+            <style>{`
+                @media (max-width: 768px) {
+                    .hero-carousel { min-height: 88vh !important; }
+                    .hero-carousel-arrow { width: 36px !important; height: 36px !important; font-size: 22px !important; }
+                    .hero-carousel-arrow-left { left: 8px !important; }
+                    .hero-carousel-arrow-right { right: 8px !important; }
+                    .hero-carousel-content { padding: 0 20px !important; }
+                    .hero-carousel-content h2 { font-size: 2rem !important; line-height: 1.1 !important; }
+                    .hero-carousel-content p { font-size: 0.98rem !important; margin-bottom: 18px !important; }
+                    .hero-carousel-content a { padding: 12px 22px !important; font-size: 0.9rem !important; }
+                    .hero-carousel-dots { bottom: 18px !important; }
+                }
+            `}</style>
             <AnimatePresence mode={carousel.transition === 'FADE' ? 'wait' : 'sync'} initial={false}>
                 <motion.div
                     key={slide.id}
@@ -143,6 +157,7 @@ function CarouselView({ carousel }: { carousel: Carousel }) {
                         type="button"
                         aria-label="Previous slide"
                         onClick={prev}
+                        className="hero-carousel-arrow hero-carousel-arrow-left"
                         style={arrowStyle('left')}
                     >
                         ‹
@@ -151,6 +166,7 @@ function CarouselView({ carousel }: { carousel: Carousel }) {
                         type="button"
                         aria-label="Next slide"
                         onClick={next}
+                        className="hero-carousel-arrow hero-carousel-arrow-right"
                         style={arrowStyle('right')}
                     >
                         ›
@@ -160,6 +176,7 @@ function CarouselView({ carousel }: { carousel: Carousel }) {
 
             {carousel.showDots && slides.length > 1 && (
                 <div
+                    className="hero-carousel-dots"
                     style={{
                         position: 'absolute',
                         bottom: 28,
@@ -247,6 +264,7 @@ function SlideContent({ slide }: { slide: CarouselSlide }) {
     const color = slide.textColor ?? '#ffffff';
     return (
         <div
+            className="hero-carousel-content"
             style={{
                 position: 'absolute',
                 inset: 0,

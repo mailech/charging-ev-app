@@ -46,40 +46,56 @@ model Visit {
 }
 
 model User {
-  id                 String        @id @default(cuid())
-  email              String        @unique
+  id                 String          @id @default(cuid())
+  email              String          @unique
   password           String
   name               String?
-  role               Role          @default(USER)
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  role               Role            @default(USER)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
-  assignedInquiries  Inquiry[]     @relation("InquiryAssignee")
-  authoredNotes      InquiryNote[] @relation("InquiryNoteAuthor")
-  posts              Post[]        @relation("PostAuthor")
-  uploadedMedia      Media[]       @relation("MediaUploader")
+  assignedInquiries  Inquiry[]       @relation("InquiryAssignee")
+  authoredNotes      InquiryNote[]   @relation("InquiryNoteAuthor")
+  authoredReplies    InquiryReply[]  @relation("InquiryReplyAuthor")
+  posts              Post[]          @relation("PostAuthor")
+  uploadedMedia      Media[]         @relation("MediaUploader")
 
   @@map("users")
 }
 
 model Inquiry {
-  id           String        @id @default(cuid())
+  id           String         @id @default(cuid())
   name         String
   email        String
   phone        String?
   subject      String
   message      String
-  status       InquiryStatus @default(NEW)
+  status       InquiryStatus  @default(NEW)
   source       String?
-  assignedTo   User?         @relation("InquiryAssignee", fields: [assignedToId], references: [id])
+  assignedTo   User?          @relation("InquiryAssignee", fields: [assignedToId], references: [id])
   assignedToId String?
   notes        InquiryNote[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  replies      InquiryReply[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   @@index([status, createdAt(sort: Desc)])
   @@index([assignedToId])
   @@map("inquiries")
+}
+
+model InquiryReply {
+  id         String   @id @default(cuid())
+  inquiry    Inquiry  @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  inquiryId  String
+  author     User     @relation("InquiryReplyAuthor", fields: [authorId], references: [id])
+  authorId   String
+  subject    String
+  body       String
+  sentAt     DateTime @default(now())
+
+  @@index([inquiryId, sentAt])
+  @@map("inquiry_replies")
 }
 
 model InquiryNote {
@@ -224,6 +240,51 @@ model CarouselSlide {
   @@map("carousel_slides")
 }
 
+model SiteSetting {
+  id                 String   @id @default(cuid())
+  registeredAddress  String   @default("")
+  officeAddress      String   @default("")
+  phone              String   @default("")
+  email              String   @default("")
+  contactCtaUrl      String   @default("/contact")
+  socials            Json     @default("[]")
+  autoReplyEnabled   Boolean  @default(false)
+  autoReplySubject   String   @default("Thanks for reaching out")
+  autoReplyBody      String   @default("Hi {{name}},\n\nThanks for getting in touch about \"{{subject}}\". We've received your message and our team will get back to you shortly.\n\n— Trio Charging")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
+model Station {
+  id        String   @id @default(cuid())
+  name      String
+  state     String
+  lat       Float
+  lon       Float
+  enabled   Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enabled, order])
+  @@map("stations")
+}
+
+model AutoReplyTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  subject   String
+  body      String
+  active    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active])
+  @@map("auto_reply_templates")
+}
+
 model Notice {
   id              String   @id @default(cuid())
   enabled         Boolean  @default(false)
@@ -238,6 +299,7 @@ model Notice {
   bodySize        Int      @default(14)
   imageWidth      Int      @default(480)
   imageHeight     Int      @default(0)
+  imageAlign      String   @default("center")
   dismissible     Boolean  @default(true)
   showFrequency   String   @default("once-per-session")
   createdAt       DateTime @default(now())
