@@ -1,4 +1,4 @@
-import { Bell, ChevronDown, LogOut } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, Menu } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
@@ -7,7 +7,11 @@ import { logout } from '@/features/auth/api';
 import { Button } from '@/components/ui/Button';
 import { toast } from '@/hooks/useToast';
 
-export function Topbar() {
+interface Props {
+    onOpenSidebar?: () => void;
+}
+
+export function Topbar({ onOpenSidebar }: Props = {}) {
     const me = useMe();
     const nav = useNavigate();
     const [open, setOpen] = useState(false);
@@ -23,8 +27,19 @@ export function Topbar() {
     const initial = me.data?.name?.[0] ?? me.data?.email?.[0] ?? 'A';
 
     return (
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
-            <div />
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-3 sm:px-6">
+            <div>
+                {onOpenSidebar && (
+                    <button
+                        type="button"
+                        onClick={onOpenSidebar}
+                        className="-ml-1 inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-100 lg:hidden"
+                        aria-label="Open menu"
+                    >
+                        <Menu className="h-5 w-5" />
+                    </button>
+                )}
+            </div>
             <div className="flex items-center gap-3">
                 <button
                     type="button"

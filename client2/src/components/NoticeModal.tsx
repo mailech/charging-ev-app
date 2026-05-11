@@ -94,6 +94,12 @@ export function NoticeModal() {
             }}
             onClick={data.dismissible ? close : undefined}
         >
+            <style>{`
+                @media (max-width: 600px) {
+                    .notice-modal-body { padding: 20px 18px !important; }
+                    .notice-modal-title { font-size: clamp(1.1rem, 5vw, 1.6rem) !important; }
+                }
+            `}</style>
             <div
                 style={{
                     position: 'relative',
@@ -136,8 +142,9 @@ export function NoticeModal() {
                         ×
                     </button>
                 )}
-                <div style={{ padding: '24px 28px' }}>
+                <div className="notice-modal-body" style={{ padding: '24px 28px' }}>
                     <h3
+                        className="notice-modal-title"
                         style={{
                             color: data.titleColor,
                             fontSize: `${data.titleSize}px`,

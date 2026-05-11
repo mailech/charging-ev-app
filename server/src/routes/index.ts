@@ -1,19 +1,22 @@
 import { Router } from 'express';
-import { authRouter } from '@/modules/auth/auth.routes.js';
+import { authRouter } from '@/modules/auth/auth.routes';
 import {
     inquiryAdminRouter,
     inquiryPublicRouter,
-} from '@/modules/inquiry/inquiry.routes.js';
-import { usersAdminRouter } from '@/modules/users/users.routes.js';
-import { dashboardAdminRouter } from '@/modules/dashboard/dashboard.routes.js';
-import { mediaAdminRouter } from '@/modules/media/media.routes.js';
-import { blogAdminRouter, blogPublicRouter } from '@/modules/blog/blog.routes.js';
-import { trackRouter } from '@/modules/track/track.routes.js';
-import { carouselAdminRouter, carouselPublicRouter } from '@/modules/carousel/carousel.routes.js';
-import { noticeAdminRouter, noticePublicRouter } from '@/modules/notice/notice.routes.js';
-import { requireAuth } from '@/middleware/auth.js';
-import { requireAdmin } from '@/middleware/requireAdmin.js';
-import { requireCsrf } from '@/middleware/csrf.js';
+} from '@/modules/inquiry/inquiry.routes';
+import { usersAdminRouter } from '@/modules/users/users.routes';
+import { dashboardAdminRouter } from '@/modules/dashboard/dashboard.routes';
+import { mediaAdminRouter } from '@/modules/media/media.routes';
+import { blogAdminRouter, blogPublicRouter } from '@/modules/blog/blog.routes';
+import { trackRouter } from '@/modules/track/track.routes';
+import { carouselAdminRouter, carouselPublicRouter } from '@/modules/carousel/carousel.routes';
+import { noticeAdminRouter, noticePublicRouter } from '@/modules/notice/notice.routes';
+import { settingsAdminRouter, settingsPublicRouter } from '@/modules/settings/settings.routes';
+import { stationAdminRouter, stationPublicRouter } from '@/modules/station/station.routes';
+import { autoReplyAdminRouter } from '@/modules/auto-reply/auto-reply.routes';
+import { requireAuth } from '@/middleware/auth';
+import { requireAdmin } from '@/middleware/requireAdmin';
+import { requireCsrf } from '@/middleware/csrf';
 
 export const apiRouter: Router = Router();
 
@@ -27,6 +30,8 @@ apiRouter.use('/inquiries', inquiryPublicRouter);
 apiRouter.use('/blog', blogPublicRouter);
 apiRouter.use('/carousel', carouselPublicRouter);
 apiRouter.use('/notice', noticePublicRouter);
+apiRouter.use('/settings', settingsPublicRouter);
+apiRouter.use('/stations', stationPublicRouter);
 
 const adminRouter: Router = Router();
 adminRouter.use(requireAuth, requireAdmin, requireCsrf);
@@ -37,5 +42,8 @@ adminRouter.use('/media', mediaAdminRouter);
 adminRouter.use('/blog', blogAdminRouter);
 adminRouter.use('/carousel', carouselAdminRouter);
 adminRouter.use('/notice', noticeAdminRouter);
+adminRouter.use('/settings', settingsAdminRouter);
+adminRouter.use('/stations', stationAdminRouter);
+adminRouter.use('/auto-reply', autoReplyAdminRouter);
 
 apiRouter.use('/admin', adminRouter);

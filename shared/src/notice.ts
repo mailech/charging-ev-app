@@ -3,6 +3,9 @@ import { z } from 'zod';
 export const noticeFrequencySchema = z.enum(['always', 'once-per-session', 'once-per-day']);
 export type NoticeFrequency = z.infer<typeof noticeFrequencySchema>;
 
+export const noticeImageAlignSchema = z.enum(['left', 'center', 'right']);
+export type NoticeImageAlign = z.infer<typeof noticeImageAlignSchema>;
+
 const colorSchema = z.string().regex(/^#?[0-9a-fA-F]{3,8}$|^rgba?\(/, 'Invalid color').max(64);
 
 export const noticeSchema = z.object({
@@ -19,6 +22,7 @@ export const noticeSchema = z.object({
     bodySize: z.number().int(),
     imageWidth: z.number().int(),
     imageHeight: z.number().int(),
+    imageAlign: noticeImageAlignSchema,
     dismissible: z.boolean(),
     showFrequency: noticeFrequencySchema,
 });
@@ -37,6 +41,7 @@ export const noticeUpdateSchema = z.object({
     bodySize: z.number().int().min(8).max(48).optional(),
     imageWidth: z.number().int().min(0).max(2000).optional(),
     imageHeight: z.number().int().min(0).max(2000).optional(),
+    imageAlign: noticeImageAlignSchema.optional(),
     dismissible: z.boolean().optional(),
     showFrequency: noticeFrequencySchema.optional(),
 });
@@ -55,6 +60,7 @@ export const NOTICE_DEFAULT: Omit<Notice, 'id'> = {
     bodySize: 14,
     imageWidth: 480,
     imageHeight: 0,
+    imageAlign: 'center',
     dismissible: true,
     showFrequency: 'once-per-session',
 };

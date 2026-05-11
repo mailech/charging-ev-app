@@ -62,7 +62,7 @@ export default function Login() {
                         <Zap className="h-4 w-4" />
                     </span>
                     <div>
-                        <p className="text-base font-semibold text-slate-900">Trio Admin</p>
+                        <p className="text-base font-semibold text-slate-900">Trio Charging Admin</p>
                         <p className="text-xs text-slate-500">Sign in to continue</p>
                     </div>
                 </div>

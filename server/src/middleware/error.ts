@@ -3,6 +3,7 @@ import { ZodError } from 'zod';
 import { MulterError } from 'multer';
 import { HttpError } from '@/utils/http-error.js';
 import { logger } from '@/lib/logger.js';
+import { env } from '@/config/env.js';
 
 export const notFoundHandler: RequestHandler = (req, res) => {
     res.status(404).json({ error: 'Not found', path: req.originalUrl });
@@ -26,5 +27,11 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     }
 
     logger.error({ err }, 'Unhandled error');
+    const e = err as { message?: string; name?: string; code?: string; Code?: string };
+    const detail = e.Code ?? e.code ?? e.name ?? e.message;
+    if (env.NODE_ENV !== 'production' && detail) {
+        res.status(500).json({ error: `Internal server error: ${detail}` });
+        return;
+    }
     res.status(500).json({ error: 'Internal server error' });
 };

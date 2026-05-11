@@ -48,13 +48,31 @@ export async function uploadImage(input: UploadInput) {
         throw badRequest('Image larger than 8 MB');
     }
 
-    const meta = await sharp(input.buffer).metadata();
+    let meta: sharp.Metadata;
+    try {
+        meta = await sharp(input.buffer).metadata();
+    } catch (err) {
+        const e = err as { message?: string };
+        throw badRequest(`Could not read image: ${e.message ?? 'unknown'}`);
+    }
     const baseName = input.originalName.replace(/\.[a-z0-9]+$/i, '') || 'image';
     const ext = '.webp';
 
     const originalKey = newKey(`${baseName}${ext}`);
-    const originalBuf = await sharp(input.buffer).rotate().webp({ quality: 90 }).toBuffer();
-    await putBuffer(originalKey, originalBuf, 'image/webp');
+    let originalBuf: Buffer;
+    try {
+        originalBuf = await sharp(input.buffer).rotate().webp({ quality: 90 }).toBuffer();
+    } catch (err) {
+        const e = err as { message?: string };
+        throw badRequest(`Image conversion failed: ${e.message ?? 'unknown'}`);
+    }
+    try {
+        await putBuffer(originalKey, originalBuf, 'image/webp');
+    } catch (err) {
+        const e = err as { name?: string; message?: string; Code?: string };
+        const detail = e.Code ?? e.name ?? e.message ?? 'unknown';
+        throw badRequest(`Storage upload failed: ${detail}`);
+    }
 
     const variants: { key: string; width: number | null; height: number | null }[] = [];
     for (const w of VARIANTS) {
@@ -65,7 +83,13 @@ export async function uploadImage(input: UploadInput) {
             .resize({ width: w, withoutEnlargement: true })
             .webp({ quality: 82 })
             .toBuffer();
-        await putBuffer(key, out, 'image/webp');
+        try {
+            await putBuffer(key, out, 'image/webp');
+        } catch (err) {
+            const e = err as { name?: string; message?: string; Code?: string };
+            const detail = e.Code ?? e.name ?? e.message ?? 'unknown';
+            throw badRequest(`Storage upload failed (variant ${w}): ${detail}`);
+        }
         const m = await sharp(out).metadata();
         variants.push({ key, width: m.width ?? null, height: m.height ?? null });
     }
@@ -76,7 +100,13 @@ export async function uploadImage(input: UploadInput) {
         .resize({ width: 240, height: 240, fit: 'cover' })
         .webp({ quality: 80 })
         .toBuffer();
-    await putBuffer(thumbKey, thumbBuf, 'image/webp');
+    try {
+        await putBuffer(thumbKey, thumbBuf, 'image/webp');
+    } catch (err) {
+        const e = err as { name?: string; message?: string; Code?: string };
+        const detail = e.Code ?? e.name ?? e.message ?? 'unknown';
+        throw badRequest(`Storage upload failed (thumb): ${detail}`);
+    }
 
     return prisma.media.create({
         data: {

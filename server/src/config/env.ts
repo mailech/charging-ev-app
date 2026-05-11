@@ -26,6 +26,15 @@ const schema = z.object({
         .optional()
         .transform((v) => v === 'true' || v === '1'),
     S3_PUBLIC_URL: z.string().url().optional(),
+    SMTP_HOST: z.string().optional(),
+    SMTP_PORT: z.coerce.number().int().positive().optional(),
+    SMTP_SECURE: z
+        .string()
+        .optional()
+        .transform((v) => v === 'true' || v === '1'),
+    SMTP_USER: z.string().optional(),
+    SMTP_PASS: z.string().optional(),
+    SMTP_FROM: z.string().optional(),
 });
 
 const parsed = schema.safeParse(process.env);
