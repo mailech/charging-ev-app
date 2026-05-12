@@ -22,6 +22,10 @@ const EMPTY_DRAFT: StationUpsertInput = {
     state: '',
     lat: 0,
     lon: 0,
+    kw: 50,
+    connector: 'CCS',
+    stalls: 2,
+    tariff: 20,
     enabled: true,
 };
 
@@ -49,6 +53,10 @@ export default function StationsManager() {
             state: s.state,
             lat: s.lat,
             lon: s.lon,
+            kw: s.kw,
+            connector: s.connector,
+            stalls: s.stalls,
+            tariff: s.tariff,
             enabled: s.enabled,
             order: s.order,
         });
@@ -66,6 +74,22 @@ export default function StationsManager() {
         }
         if (!Number.isFinite(draft.lon) || draft.lon < -180 || draft.lon > 180) {
             toast.error('Longitude must be between -180 and 180');
+            return;
+        }
+        if (!Number.isFinite(draft.kw) || draft.kw < 0) {
+            toast.error('Power must be 0 or higher');
+            return;
+        }
+        if (!draft.connector.trim()) {
+            toast.error('Connector is required');
+            return;
+        }
+        if (!Number.isFinite(draft.stalls) || draft.stalls < 0) {
+            toast.error('Stalls must be 0 or higher');
+            return;
+        }
+        if (!Number.isFinite(draft.tariff) || draft.tariff < 0) {
+            toast.error('Tariff must be 0 or higher');
             return;
         }
         try {
@@ -266,6 +290,53 @@ export default function StationsManager() {
                                 value={draft.lon}
                                 onChange={(e) =>
                                     setDraft({ ...draft, lon: Number(e.target.value) })
+                                }
+                            />
+                        </Field>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <Field label="Power (kW)">
+                            <Input
+                                type="number"
+                                step="any"
+                                min={0}
+                                max={1000}
+                                value={draft.kw}
+                                onChange={(e) =>
+                                    setDraft({ ...draft, kw: Number(e.target.value) })
+                                }
+                            />
+                        </Field>
+                        <Field label="Connector">
+                            <Input
+                                placeholder="e.g., CCS, CHAdeMO, Type 2"
+                                value={draft.connector}
+                                onChange={(e) =>
+                                    setDraft({ ...draft, connector: e.target.value })
+                                }
+                            />
+                        </Field>
+                        <Field label="Stalls">
+                            <Input
+                                type="number"
+                                step={1}
+                                min={0}
+                                max={100}
+                                value={draft.stalls}
+                                onChange={(e) =>
+                                    setDraft({ ...draft, stalls: Number(e.target.value) })
+                                }
+                            />
+                        </Field>
+                        <Field label="Tariff (₹/kWh)">
+                            <Input
+                                type="number"
+                                step="any"
+                                min={0}
+                                max={10000}
+                                value={draft.tariff}
+                                onChange={(e) =>
+                                    setDraft({ ...draft, tariff: Number(e.target.value) })
                                 }
                             />
                         </Field>

@@ -78,7 +78,7 @@ export function Navbar() {
                     to="/contact"
                     className="hidden md:inline-flex items-center gap-2 px-5 py-2 bg-accent text-background font-semibold rounded-full hover:bg-accent/90 transition-colors"
                 >
-                    Contact Sales
+                    Contact Us
                 </Link>
 
                 <button
@@ -177,7 +177,7 @@ export function Navbar() {
                                     to="/contact"
                                     className="flex items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-background transition hover:bg-accent/90"
                                 >
-                                    Contact Sales
+                                    Contact Us
                                     <ArrowRight className="h-4 w-4" />
                                 </Link>
                             </motion.div>

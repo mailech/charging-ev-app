@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Eye, EyeOff, Loader2, Save, Image as ImageIcon, X } from 'lucide-react';
-import type { Notice, NoticeFrequency } from '@trio/shared/notice';
+import type { Notice, NoticeFrequency, NoticeImageAlign } from '@trio/shared/notice';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -13,6 +13,7 @@ import { useNoticeQuery, useUpdateNoticeMutation } from '../hooks';
 import { NoticePreview } from '../NoticePreview';
 
 const FREQ: NoticeFrequency[] = ['always', 'once-per-session', 'once-per-day'];
+const ALIGN: NoticeImageAlign[] = ['left', 'center', 'right'];
 
 export default function NoticeManager() {
     const query = useNoticeQuery();
@@ -53,6 +54,7 @@ export default function NoticeManager() {
                 bodySize: draft.bodySize,
                 imageWidth: draft.imageWidth,
                 imageHeight: draft.imageHeight,
+                imageAlign: draft.imageAlign,
                 dismissible: draft.dismissible,
                 showFrequency: draft.showFrequency,
             });
@@ -213,6 +215,19 @@ export default function NoticeManager() {
                             <Number label="Body size (px)" value={draft.bodySize} min={8} max={48} onChange={(v) => set('bodySize', v)} />
                             <Number label="Image width (px, 0=auto)" value={draft.imageWidth} min={0} max={2000} onChange={(v) => set('imageWidth', v)} />
                             <Number label="Image height (px, 0=auto)" value={draft.imageHeight} min={0} max={2000} onChange={(v) => set('imageHeight', v)} />
+                            <label className="space-y-1">
+                                <span className="text-xs font-medium text-slate-600">Image alignment</span>
+                                <Select
+                                    value={draft.imageAlign}
+                                    onChange={(e) => set('imageAlign', e.target.value as NoticeImageAlign)}
+                                >
+                                    {ALIGN.map((a) => (
+                                        <option key={a} value={a}>
+                                            {a}
+                                        </option>
+                                    ))}
+                                </Select>
+                            </label>
                         </CardBody>
                     </Card>
 

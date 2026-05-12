@@ -558,9 +558,11 @@ export function ContactSalesForm({ open, onClose }: ContactSalesFormProps) {
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
+                                    gap: 24,
+                                    flexWrap: 'wrap',
                                 }}
                             >
-                                <div style={{ fontSize: '0.75rem', color: TEXT_DIM }}>
+                                <div style={{ fontSize: '0.75rem', color: TEXT_DIM, flex: '1 1 220px', minWidth: 0 }}>
                                     We respond within one business day. No spam, ever.
                                 </div>
                                 <button
@@ -572,11 +574,13 @@ export function ContactSalesForm({ open, onClose }: ContactSalesFormProps) {
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: 10,
+                                        flexShrink: 0,
+                                        whiteSpace: 'nowrap',
                                         opacity: mutation.isPending ? 0.6 : 1,
                                         cursor: mutation.isPending ? 'not-allowed' : 'pointer',
                                     }}
                                 >
-                                    {mutation.isPending ? 'Sending…' : 'Send inquiry'}
+                                    <span>{mutation.isPending ? 'Sending…' : 'Send inquiry'}</span>
                                     <svg
                                         width="16"
                                         height="16"

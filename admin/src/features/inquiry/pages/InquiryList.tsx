@@ -10,10 +10,8 @@ import {
 import {
     ArrowDown,
     ChevronRight,
-    Clock,
     Download,
     MessageSquare,
-    TrendingUp,
     UserPlus,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -21,7 +19,6 @@ import { Card } from '@/components/ui/Card';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Tabs } from '@/components/ui/Tabs';
 import { Pagination } from '@/components/ui/Pagination';
-import { Avatar } from '@/components/ui/Avatar';
 import { DataTable, type RowSelection } from '@/components/data/DataTable';
 import { KpiCard } from '@/components/data/KpiCard';
 import { ReplyAllCard } from '../ReplyAllCard';
@@ -184,21 +181,6 @@ export default function InquiryList() {
                 cell: ({ row }) => <StatusCell row={row.original} />,
             },
             {
-                header: 'Assigned To',
-                accessorKey: 'assignedTo',
-                cell: ({ row }) => {
-                    const a = row.original.assignedTo;
-                    if (!a) return <span className="text-slate-300">—</span>;
-                    const display = a.name ?? a.email;
-                    return (
-                        <div className="flex items-center gap-2">
-                            <Avatar name={a.name} email={a.email} size="xs" />
-                            <span className="text-slate-700">{abbreviate(display)}</span>
-                        </div>
-                    );
-                },
-            },
-            {
                 id: 'chevron',
                 header: '',
                 cell: () => <ChevronRight className="h-4 w-4 text-slate-300" />,
@@ -216,7 +198,7 @@ export default function InquiryList() {
                 description="Track, manage and respond to inquiries from businesses."
             />
 
-            <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <KpiCard
                     label="Total Inquiries"
                     value={fmtNumber(stats.data?.total)}
@@ -231,31 +213,6 @@ export default function InquiryList() {
                     icon={<UserPlus className="h-5 w-5" />}
                     iconTone="blue"
                 />
-                <KpiCard
-                    label="Response Rate"
-                    value={
-                        stats.data?.responseRatePct != null
-                            ? `${stats.data.responseRatePct}%`
-                            : '—'
-                    }
-                    deltaPct={stats.data?.responseRateDeltaPct ?? null}
-                    icon={<TrendingUp className="h-5 w-5" />}
-                    iconTone="violet"
-                />
-                <KpiCard
-                    label="Avg. Response Time"
-                    value={
-                        stats.data?.avgResponseHours != null
-                            ? formatHours(stats.data.avgResponseHours)
-                            : '—'
-                    }
-                    deltaPct={stats.data?.avgResponseDeltaPct ?? null}
-                    icon={<Clock className="h-5 w-5" />}
-                    iconTone="amber"
-                />
-            </div>
-
-            <div className="mb-6">
                 <ReplyAllCard />
             </div>
 
@@ -361,17 +318,3 @@ function fmtNumber(n: number | undefined): string {
     return n.toLocaleString();
 }
 
-function formatHours(h: number): string {
-    if (h < 1) {
-        return `${Math.round(h * 60)}m`;
-    }
-    const hours = Math.floor(h);
-    const minutes = Math.round((h - hours) * 60);
-    return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
-}
-
-function abbreviate(name: string): string {
-    const parts = name.trim().split(/\s+/);
-    if (parts.length === 1) return parts[0]!;
-    return `${parts[0]} ${parts[parts.length - 1]!.charAt(0).toUpperCase()}.`;
-}

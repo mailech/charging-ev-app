@@ -74,9 +74,14 @@ export function NoticeModal() {
         height: data.imageHeight ? `${data.imageHeight}px` : 'auto',
         maxWidth: '100%',
         borderRadius: 8,
-        marginTop: 16,
         display: 'block',
     };
+    const imageJustify =
+        data.imageAlign === 'left'
+            ? 'flex-start'
+            : data.imageAlign === 'right'
+              ? 'flex-end'
+              : 'center';
 
     return (
         <div
@@ -156,7 +161,9 @@ export function NoticeModal() {
                         {data.title}
                     </h3>
                     {data.imageUrl && (
-                        <img src={mediaUrl(data.imageUrl)} alt="" style={imageStyle} />
+                        <div style={{ display: 'flex', justifyContent: imageJustify, marginTop: 16 }}>
+                            <img src={mediaUrl(data.imageUrl)} alt="" style={imageStyle} />
+                        </div>
                     )}
                     {data.body && (
                         <div
