@@ -1819,29 +1819,23 @@ export default function App() {
                         width: '100%',
                         height: '460px',
                         marginBottom: 36,
-                        borderRadius: 24,
                         overflow: 'hidden',
-                        border: `1px solid ${BORDER_STRONG}`,
-                        background: '#0a2620',
-                        boxShadow: `0 24px 60px rgba(0,0,0,0.55), 0 0 60px ${ACCENT}14`,
                       }}
                     >
                       <iframe
                         src="/ev-eco-car.html"
                         title="TRIO EV — Eco Charging"
                         style={{
-                          width: '100%',
-                          height: '100%',
+                          width: '130%',
+                          height: '130%',
+                          position: 'absolute',
+                          top: '-15%',
+                          left: '-15%',
                           border: 'none',
                           display: 'block',
                           background: '#0a2620',
                         }}
                       />
-                      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', boxShadow: `inset 0 0 80px rgba(0,0,0,0.45)` }} />
-                      <div style={{ position: 'absolute', top: 14, left: 14, width: 22, height: 22, borderTop: `1.5px solid ${ACCENT}`, borderLeft: `1.5px solid ${ACCENT}`, opacity: 0.65, pointerEvents: 'none' }} />
-                      <div style={{ position: 'absolute', top: 14, right: 14, width: 22, height: 22, borderTop: `1.5px solid ${ACCENT}`, borderRight: `1.5px solid ${ACCENT}`, opacity: 0.65, pointerEvents: 'none' }} />
-                      <div style={{ position: 'absolute', bottom: 14, left: 14, width: 22, height: 22, borderBottom: `1.5px solid ${ACCENT}`, borderLeft: `1.5px solid ${ACCENT}`, opacity: 0.65, pointerEvents: 'none' }} />
-                      <div style={{ position: 'absolute', bottom: 14, right: 14, width: 22, height: 22, borderBottom: `1.5px solid ${ACCENT}`, borderRight: `1.5px solid ${ACCENT}`, opacity: 0.65, pointerEvents: 'none' }} />
                     </div>
 
                     {(() => {
@@ -1909,6 +1903,38 @@ export default function App() {
               </div>
               )}
             </section>
+
+            {/* Mobile-only EV-Eco animation — placed just above the Energy Synapse section */}
+            {isMobile && (
+              <section style={{ padding: '8px 20px 0', background: '#000' }}>
+                <div
+                  style={{
+                    position: 'relative',
+                    width: '100%',
+                    height: 260,
+                    overflow: 'hidden',
+                    borderRadius: 20,
+                    background: '#0a2620',
+                    boxShadow: '0 16px 40px rgba(0,0,0,0.45)',
+                  }}
+                >
+                  <iframe
+                    src="/ev-eco-car.html"
+                    title="TRIO EV — Eco Charging"
+                    style={{
+                      width: '140%',
+                      height: '140%',
+                      position: 'absolute',
+                      top: '-22%',
+                      left: '-20%',
+                      border: 'none',
+                      display: 'block',
+                      background: '#0a2620',
+                    }}
+                  />
+                </div>
+              </section>
+            )}
 
             {/* INDIA COVERAGE — operational dashboard */}
             {/* INDIA COVERAGE OPERATIONAL DASHBOARD (Integrated High-Fidelity Prototype) */}
