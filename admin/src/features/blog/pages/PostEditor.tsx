@@ -163,7 +163,7 @@ export default function PostEditor() {
                 const serverMsg = e?.response?.data?.message;
                 toast.error(
                     serverMsg ??
-                        (status ? `Save failed (HTTP ${status})` : e?.message ?? 'Save failed'),
+                    (status ? `Save failed (HTTP ${status})` : e?.message ?? 'Save failed'),
                 );
             }
             return null;
@@ -172,13 +172,16 @@ export default function PostEditor() {
 
     useEffect(() => {
         if (!dirtyRef.current) return;
-        if (isNew && !title.trim()) return;
+        // Don't autosave a new (unsaved) post. New posts are created ONLY by an
+        // explicit Save / Publish click — otherwise a pending autosave timer can
+        // fire alongside the click and create a duplicate row (the "-2" slug).
+        if (isNew) return;
         const handle = window.setTimeout(() => {
             void save({ silent: true });
         }, AUTOSAVE_MS);
         return () => window.clearTimeout(handle);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [title, slug, excerpt, content, coverId, categoryId, tagIds, seoTitle, seoDescription]);
+    }, [title, slug, excerpt, content, coverId, categoryId, tagIds, seoTitle, seoDescription, isNew]);
 
     const markDirty = () => {
         dirtyRef.current = true;

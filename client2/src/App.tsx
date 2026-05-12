@@ -302,9 +302,8 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Auto-rotate Services showcase every 4s; timer resets on manual change
+  // Auto-rotate Services showcase every 4s; timer resets on manual change (mobile + desktop)
   useEffect(() => {
-    if (!isMobile) return;
     const t = setTimeout(() => {
       setActiveService(prev => (prev + 1) % 4);
     }, 4000);
@@ -1809,15 +1808,36 @@ export default function App() {
                   </p>
                 </div>
 
-                {/* Main Content Grid */}
-                <div className="services-main-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 80, alignItems: 'center', marginTop: 20 }}>
-                  {/* Left: Image & Description */}
+                {/* Main Content Grid — left: live EV-Eco animation iframe + active description, right: services list */}
+                <div className="services-main-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 80, alignItems: 'stretch', marginTop: 20 }}>
+                  {/* Left: live animated hero + active service description */}
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <div className="services-img-container" style={{ position: 'relative', width: '100%', height: '400px', marginBottom: 40 }}>
-                      <img src={serviceImg} alt="Eco Charging" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'left center' }} />
+                    <div
+                      className="services-iframe-wrap"
+                      style={{
+                        position: 'relative',
+                        width: '100%',
+                        height: '460px',
+                        marginBottom: 36,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <iframe
+                        src="/ev-eco-car.html"
+                        title="TRIO EV — Eco Charging"
+                        style={{
+                          width: '130%',
+                          height: '130%',
+                          position: 'absolute',
+                          top: '-15%',
+                          left: '-15%',
+                          border: 'none',
+                          display: 'block',
+                          background: '#0a2620',
+                        }}
+                      />
                     </div>
 
-                    {/* Active Service Description */}
                     {(() => {
                       const SERVICES = [
                         { title: 'CHARGING SOLUTIONS', desc: 'We offer Level 2 charging, which provides a moderate charging speed at 240V, ideal for daily use and longer stops.' },
@@ -1827,19 +1847,29 @@ export default function App() {
                       ];
                       return (
                         <div className="services-desc" style={{ paddingLeft: 12 }}>
-                          <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', marginBottom: 14, letterSpacing: -0.01 }}>
-                            {SERVICES[activeService].title}
-                          </h3>
-                          <p style={{ color: TEXT_DIM, fontSize: '1rem', lineHeight: 1.6, maxWidth: '90%' }}>
-                            {SERVICES[activeService].desc}
-                          </p>
+                          <AnimatePresence mode="wait">
+                            <motion.div
+                              key={activeService}
+                              initial={{ opacity: 0, x: 24 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -16 }}
+                              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                            >
+                              <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', marginBottom: 14, letterSpacing: -0.01 }}>
+                                {SERVICES[activeService].title}
+                              </h3>
+                              <p style={{ color: TEXT_DIM, fontSize: '1rem', lineHeight: 1.6, maxWidth: '90%' }}>
+                                {SERVICES[activeService].desc}
+                              </p>
+                            </motion.div>
+                          </AnimatePresence>
                         </div>
                       );
                     })()}
                   </div>
 
-                  {/* Right: List of Services */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {/* Right: compact clickable services list, evenly distributed within iframe height */}
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: 460 }}>
                     {[
                       { title: 'CHARGING SOLUTIONS' },
                       { title: 'USER CONVENIENCE' },
@@ -1853,16 +1883,16 @@ export default function App() {
                           className="service-item"
                           onClick={() => setActiveService(idx)}
                           style={{
-                            padding: '36px 32px',
+                            padding: '20px 28px',
                             cursor: 'pointer',
                             position: 'relative',
                             borderBottom: idx === 3 ? 'none' : `1px solid rgba(255,255,255,0.06)`,
-                            background: isActive ? 'linear-gradient(90deg, rgba(132, 204, 22, 0.08) 0%, transparent 100%)' : 'transparent',
+                            background: isActive ? `linear-gradient(90deg, ${ACCENT}14 0%, transparent 100%)` : 'transparent',
                             transition: 'all 0.3s ease',
-                            borderLeft: isActive ? `4px solid #84cc16` : '4px solid transparent'
+                            borderLeft: isActive ? `4px solid ${ACCENT}` : '4px solid transparent',
                           }}
                         >
-                          <h4 style={{ fontSize: '1.25rem', fontWeight: 600, color: isActive ? '#84cc16' : '#ffffff', textTransform: 'uppercase', letterSpacing: -0.01, transition: 'color 0.3s ease' }}>
+                          <h4 style={{ fontSize: '1.15rem', fontWeight: 600, color: isActive ? ACCENT : '#ffffff', textTransform: 'uppercase', letterSpacing: -0.01, transition: 'color 0.3s ease' }}>
                             {srv.title}
                           </h4>
                         </div>
@@ -1873,6 +1903,38 @@ export default function App() {
               </div>
               )}
             </section>
+
+            {/* Mobile-only EV-Eco animation — placed just above the Energy Synapse section */}
+            {isMobile && (
+              <section style={{ padding: '8px 20px 0', background: '#000' }}>
+                <div
+                  style={{
+                    position: 'relative',
+                    width: '100%',
+                    height: 260,
+                    overflow: 'hidden',
+                    borderRadius: 20,
+                    background: '#0a2620',
+                    boxShadow: '0 16px 40px rgba(0,0,0,0.45)',
+                  }}
+                >
+                  <iframe
+                    src="/ev-eco-car.html"
+                    title="TRIO EV — Eco Charging"
+                    style={{
+                      width: '140%',
+                      height: '140%',
+                      position: 'absolute',
+                      top: '-22%',
+                      left: '-20%',
+                      border: 'none',
+                      display: 'block',
+                      background: '#0a2620',
+                    }}
+                  />
+                </div>
+              </section>
+            )}
 
             {/* INDIA COVERAGE — operational dashboard */}
             {/* INDIA COVERAGE OPERATIONAL DASHBOARD (Integrated High-Fidelity Prototype) */}
