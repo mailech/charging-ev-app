@@ -277,6 +277,8 @@ export default function App() {
   const [indiaGeo, setIndiaGeo] = useState<{ countryPath: string; states: { name: string; path: string }[]; project: (lon: number, lat: number) => [number, number] } | null>(null);
   const [tooltip, setTooltip] = useState<{ name: string; x: number; y: number } | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const dashboardIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const findStationsIframeRef = useRef<HTMLIFrameElement | null>(null);
   const [page, setPage] = useState<Page>(() =>
     typeof window !== 'undefined' ? pathToPage(window.location.pathname) : 'home',
   );
@@ -315,6 +317,24 @@ export default function App() {
     () => stationsQuery.data ?? STATIONS_FALLBACK.map((s) => ({ ...s, stalls: 2, tariff: 20 })),
     [stationsQuery.data],
   );
+
+  const iframeApiBase = useMemo(() => {
+    const base = (api.defaults.baseURL ?? '') as string;
+    return encodeURIComponent(base);
+  }, []);
+
+  useEffect(() => {
+    if (!stationsQuery.data) return;
+    const payload = {
+      type: 'ev-stations-update',
+      stations: STATIONS.map((s) => ({
+        id: s.id, name: s.name, state: s.state,
+        lon: s.lon, lat: s.lat, kw: s.kw, connector: s.conn,
+      })),
+    };
+    dashboardIframeRef.current?.contentWindow?.postMessage(payload, '*');
+    findStationsIframeRef.current?.contentWindow?.postMessage(payload, '*');
+  }, [STATIONS, stationsQuery.data]);
 
   const settingsQuery = useQuery({ queryKey: ['site-settings'], queryFn: fetchSiteSettings, staleTime: 60_000 });
   const siteSettings = useMemo(() => {
@@ -2157,7 +2177,8 @@ export default function App() {
                     position: 'relative'
                   }}>
                     <iframe
-                      src="/dashboard.html"
+                      ref={dashboardIframeRef}
+                      src={`/dashboard.html?apiUrl=${iframeApiBase}`}
                       style={{
                         width: '100%',
                         height: '100%',
@@ -3052,8 +3073,9 @@ export default function App() {
               </div>
             ) : (
               <iframe
+                ref={findStationsIframeRef}
                 className="find-stations-iframe"
-                src="/find-stations.html"
+                src={`/find-stations.html?apiUrl=${iframeApiBase}`}
                 style={{ width: '100%', height: '1100px', border: 'none' }}
                 title="Find Charging Stations"
               />
