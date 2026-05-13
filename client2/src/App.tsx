@@ -205,31 +205,6 @@ const ModuleCard = ({ idx, title, desc, status, statusColor = ACCENT, metrics, p
   </motion.div>
 );
 
-// --- STATIONS DATA (fallback shown briefly before /api/stations resolves) ---
-const STATIONS_FALLBACK = [
-  { id: 'BR-B21', name: 'Patna', state: 'Bihar', lon: 85.14, lat: 25.59, kw: 50, conn: 'CCS' },
-  { id: 'BR-B22', name: 'Gaya', state: 'Bihar', lon: 84.99, lat: 24.79, kw: 60, conn: 'CCS' },
-  { id: 'BR-B23', name: 'Muzaffarpur', state: 'Bihar', lon: 85.39, lat: 26.12, kw: 25, conn: 'Type 2' },
-  { id: 'JH-J31', name: 'Ranchi', state: 'Jharkhand', lon: 85.32, lat: 23.34, kw: 60, conn: 'CCS' },
-  { id: 'JH-J32', name: 'Jamshedpur', state: 'JH', lon: 86.18, lat: 22.80, kw: 120, conn: 'CCS' },
-  { id: 'JH-J33', name: 'Dhanbad', state: 'Jharkhand', lon: 86.43, lat: 23.79, kw: 50, conn: 'CHAdeMO' },
-  { id: 'WB-410', name: 'Kolkata', state: 'West Bengal', lon: 88.36, lat: 22.57, kw: 50, conn: 'CCS' },
-  { id: 'WB-411', name: 'Salt Lake', state: 'West Bengal', lon: 88.42, lat: 22.58, kw: 120, conn: 'CCS' },
-  { id: 'WB-412', name: 'Howrah', state: 'West Bengal', lon: 88.31, lat: 22.59, kw: 60, conn: 'Type 2' },
-  { id: 'WB-413', name: 'New Town', state: 'West Bengal', lon: 88.46, lat: 22.62, kw: 150, conn: 'CCS' },
-  { id: 'WB-414', name: 'Durgapur', state: 'West Bengal', lon: 87.31, lat: 23.55, kw: 60, conn: 'CCS' },
-  { id: 'MH-M50', name: 'Mumbai South', state: 'Maharashtra', lon: 72.83, lat: 18.93, kw: 150, conn: 'CCS' },
-  { id: 'MH-M51', name: 'Navi Mumbai', state: 'Maharashtra', lon: 73.01, lat: 19.03, kw: 60, conn: 'CCS' },
-  { id: 'MH-P52', name: 'Pune City', state: 'Maharashtra', lon: 73.85, lat: 18.52, kw: 50, conn: 'Type 2' },
-  { id: 'DL-D60', name: 'Connaught Pl', state: 'Delhi', lon: 77.21, lat: 28.63, kw: 120, conn: 'CCS' },
-  { id: 'DL-D61', name: 'Noida Sec 62', state: 'Uttar Pradesh', lon: 77.36, lat: 28.61, kw: 60, conn: 'CHAdeMO' },
-  { id: 'DL-D62', name: 'Gurgaon PH3', state: 'Haryana', lon: 77.08, lat: 28.48, kw: 150, conn: 'CCS' },
-  { id: 'KA-K70', name: 'Indiranagar', state: 'Karnataka', lon: 77.64, lat: 12.97, kw: 50, conn: 'Type 2' },
-  { id: 'KA-K71', name: 'Whitefield', state: 'Karnataka', lon: 77.75, lat: 12.96, kw: 120, conn: 'CCS' },
-  { id: 'TN-T80', name: 'Chennai Central', state: 'Tamil Nadu', lon: 80.27, lat: 13.08, kw: 60, conn: 'CCS' },
-  { id: 'TN-T81', name: 'OMR Gateway', state: 'Tamil Nadu', lon: 80.23, lat: 12.89, kw: 150, conn: 'CCS' },
-];
-
 const WHY_SLIDES = [
   {
     title: 'CRUCIAL FOR ELECTRIC VEHICLE ADOPTION',
@@ -314,7 +289,7 @@ export default function App() {
 
   const stationsQuery = useQuery({ queryKey: ['stations'], queryFn: fetchStations, staleTime: 60_000 });
   const STATIONS: LocalStation[] = useMemo(
-    () => stationsQuery.data ?? STATIONS_FALLBACK.map((s) => ({ ...s, stalls: 2, tariff: 20 })),
+    () => stationsQuery.data ?? [],
     [stationsQuery.data],
   );
 
