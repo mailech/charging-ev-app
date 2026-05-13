@@ -71,6 +71,16 @@ document.addEventListener('DOMContentLoaded', async function() {
     const manifest = JSON.parse(manifestEl.textContent);
     let template = JSON.parse(templateEl.textContent);
 
+    // === TEMPLATE PATCH: subscribe station-consuming components to live updates ===
+    try {
+      var __subSnippet = '\n  const [__stationTick, __setStationTick] = React.useState(0);\n  React.useEffect(function(){ if (!window.__evStationListeners) return; var fn = function(){ __setStationTick(function(t){ return t + 1; }); }; window.__evStationListeners.add(fn); return function(){ window.__evStationListeners.delete(fn); }; }, []);';
+      template = template.replace(
+        'const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);',
+        'const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);' + __subSnippet
+      );
+    } catch(__tplErr) { console.warn('[ev-stations] template patch skipped', __tplErr); }
+    // === END TEMPLATE PATCH ===
+
     const uuids = Object.keys(manifest);
     setStatus('Unpacking ' + uuids.length + ' assets...');
 
@@ -106,6 +116,34 @@ document.addEventListener('DOMContentLoaded', async function() {
           }
         }
 
+        // === STATIONS PATCH: rewrite hardcoded station data to live API/postMessage ===
+        if (entry.mime && entry.mime.indexOf('javascript') !== -1 && finalBytes.length < 200000) {
+          try {
+            var __txt = new TextDecoder().decode(finalBytes);
+            if (__txt.indexOf('const STATIONS = [') !== -1 && __txt.indexOf('Major Indian cities') !== -1) {
+              var __arrStart = __txt.indexOf('const STATIONS = [');
+              var __arrEnd = __txt.indexOf('];', __arrStart) + 2;
+              var __bootstrap =
+                'let STATIONS = [];\n' +
+                'window.EV_STATIONS = STATIONS;\n' +
+                'window.__evStationListeners = window.__evStationListeners || new Set();\n' +
+                'function __evNotifyStations(){ window.__evStationListeners.forEach(function(fn){ try{ fn(); }catch(e){} }); }\n' +
+                'function __evMapStations(arr){ return (arr||[]).map(function(s){ return { id:s.id, name:s.name, state:s.state, lon:s.lon, lat:s.lat, kw:s.kw, conn:(s.connector||s.conn) }; }); }\n' +
+                'function __evSetStations(arr){ STATIONS = __evMapStations(arr); window.EV_STATIONS = STATIONS; __evNotifyStations(); }\n' +
+                '(async function(){ try { var apiUrl = new URLSearchParams(window.location.search).get("apiUrl") || ""; var r = await fetch(apiUrl + "/api/stations", { credentials: "omit" }); if (r.ok) { __evSetStations(await r.json()); } } catch(e) { console.warn("[ev-stations] fetch failed", e); } })();\n' +
+                'window.addEventListener("message", function(e){ if (e && e.data && e.data.type === "ev-stations-update" && Array.isArray(e.data.stations)) { __evSetStations(e.data.stations); } });\n';
+              __txt = __txt.slice(0, __arrStart) + __bootstrap + __txt.slice(__arrEnd);
+              __txt = __txt.replace(
+                'const [tick, setTick] = React.useState(0);',
+                'const [tick, setTick] = React.useState(0);\n  const [__stationTick, __setStationTick] = React.useState(0);\n  React.useEffect(function(){ var fn = function(){ __setStationTick(function(t){ return t + 1; }); }; window.__evStationListeners.add(fn); return function(){ window.__evStationListeners.delete(fn); }; }, []);'
+              );
+              __txt = __txt.replace('}, [proj]);', '}, [proj, __stationTick]);');
+              __txt = __txt.replace('.filter(s => STATION_STATES.includes(s.state))', '');
+              finalBytes = new TextEncoder().encode(__txt);
+            }
+          } catch(__patchErr) { console.warn('[ev-stations] patch skipped', __patchErr); }
+        }
+        // === END STATIONS PATCH ===
         blobUrls[uuid] = URL.createObjectURL(new Blob([finalBytes], { type: entry.mime }));
       } catch (err) {
         console.error('Failed to decode asset ' + uuid + ':', err);
